@@ -2,12 +2,13 @@
 #include "mai_vk_backend/vk_pipeline.h"
 
 #define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include "glm/glm.hpp"
 #include <chrono>
 #include <glm/gtc/matrix_transform.hpp>
 
 struct Vertex {
-  glm::vec2 pos;
+  glm::vec3 pos;
   glm::vec3 color;
   glm::vec2 texCoords;
 };
@@ -18,15 +19,8 @@ struct UniformBufferObject {
   glm::mat4 proj;
 } ubo;
 
-const std::vector<Vertex> vertices = {
-    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-};
-const std::vector<uint16_t> indices = {
-    0, 1, 2, 2, 3, 0,
-};
+std::vector<Vertex> vertices;
+const std::vector<uint32_t> indices;
 
 void MaiApp::run() {
   init();
@@ -36,9 +30,6 @@ void MaiApp::run() {
 void MaiApp::init() {
   uint32_t width = 1200, height = 800;
   const char *appName = "Mai Demo";
-
-  MAI::TextureModule image =
-      renderer->createTexture(RESOURCES_PATH "statue-1275469_1280.jpg");
 
   renderer = new MAI::MAIRenderer(width, height, appName);
   vert = renderer->createShader(SHADERS_PATH "spvs/main.vspv",
@@ -52,7 +43,7 @@ void MaiApp::init() {
               {
                   .binding = 0,
                   .location = 0,
-                  .format = VK_FORMAT_R32G32_SFLOAT,
+                  .format = VK_FORMAT_R32G32B32_SFLOAT,
                   .offset = 0,
               },
               {
@@ -76,33 +67,39 @@ void MaiApp::init() {
           },
   };
 
-  VkDescriptorSetLayout descriptorSet = renderer->createDescriptorSetLayout({
-      {
-          .binding = 0,
-          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-          .descriptorCount = 1,
-          .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-      },
-      {
-          .binding = 1,
-          .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-          .descriptorCount = 1,
-          .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-      },
-  });
-
   uniformBuffer = renderer->createBuffer({
       .size = sizeof(ubo),
       .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
   });
 
-  sets = renderer->createDescriptorSets(
-      descriptorSet, uniformBuffer->getUniformBuffers(), sizeof(ubo));
+  texture = renderer->createTexture(RESOURCES_PATH "wood.jpg");
+
+  MAI::DescriptorSetInfo descriptorInfo = {
+      .uboLayout =
+          {
+              {
+                  .binding = 0,
+                  .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                  .descriptorCount = 1,
+                  .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+              },
+              {
+                  .binding = 1,
+                  .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                  .descriptorCount = 1,
+                  .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+              },
+          },
+      .buffers = {uniformBuffer},
+      .textures = {texture},
+  };
+
+  descriptorSets = renderer->createDescriptor(descriptorInfo);
 
   pipeline = renderer->createPipeline({
       .vert = vert,
       .frag = frag,
-      .descriptorSetLayout = descriptorSet,
+      .descriptorSetLayout = descriptorSets->getDescriptorSetLayout(),
       .vertInput = vertInput,
   });
 
@@ -117,8 +114,6 @@ void MaiApp::init() {
       .data = indices.data(),
       .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
   });
-
-  renderer->destroyDescriptorSetLayout(descriptorSet);
 }
 
 void MaiApp::mainLoop() {
@@ -145,13 +140,15 @@ void MaiApp::mainLoop() {
     renderer->bindRenderPipeline(pipeline);
     renderer->bindVertexBuffer(0, vertexBuffer);
     renderer->bindIndexBuffer(indexBuffer, 0, VK_INDEX_TYPE_UINT16);
-    renderer->bindDescriptorSet(pipeline, sets);
+    renderer->bindDescriptorSet(pipeline, descriptorSets->getDescriptorSets());
     renderer->cmdDrawIndex(indices.size(), 1, 0);
   });
 }
 
 MaiApp::~MaiApp() {
   renderer->waitForDevice();
+  delete descriptorSets;
+  delete texture;
   delete uniformBuffer;
   delete indexBuffer;
   delete vertexBuffer;

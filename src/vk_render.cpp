@@ -1,12 +1,13 @@
 #include "mai_vk_backend/vk_render.h"
 #include <cassert>
+#include <iostream>
 
 namespace MAI {
 
 VKRender::VKRender(VKContext *vkContext, VKSync *vkSyncObj,
-                   VKSwapchain *vkSwapchain, VKCmd *vkCmd)
+                   VKSwapchain *vkSwapchain, VKCmd *vkCmd, VKTexture *texture)
     : vkContext(vkContext), vkSync(vkSyncObj), vkSwapchain(vkSwapchain),
-      vkCmd(vkCmd) {}
+      vkCmd(vkCmd), depthTexture(texture) {}
 
 void VKRender::acquireSwapChainImageIndex() {
   if (vkWaitForFences(vkContext->getDevice(), 1,
@@ -20,15 +21,21 @@ void VKRender::acquireSwapChainImageIndex() {
   VkResult result = vkAcquireNextImageKHR(
       vkContext->getDevice(), vkSwapchain->getSwapchain(), UINT64_MAX,
       vkSync->getImageAvailableSemaphores()[frameIndex], nullptr, &imageIndex);
-  if (result == VK_ERROR_OUT_OF_DATE_KHR)
+  if (result == VK_ERROR_OUT_OF_DATE_KHR) {
     vkSwapchain->recreateSwapChain();
+    delete depthTexture;
+    depthTexture = new VKTexture(vkContext, vkCmd, vkSwapchain, nullptr,
+                                 MAI_DEPTH_TEXTURE);
+  }
 }
 
-void transition_image_layout(
-    uint32_t imageIndex, VkImageLayout oldLayout, VkImageLayout newLayout,
-    VkAccessFlagBits2 srcAccessMask, VkAccessFlagBits2 dstAccessMask,
-    VkPipelineStageFlags2 srcStageMask, VkPipelineStageFlags2 dstStageMask,
-    VkImage swapChainImage, VkCommandBuffer commandBuffer) {
+void transition_image_layout(VkImageAspectFlags imageAspect,
+                             VkImageLayout oldLayout, VkImageLayout newLayout,
+                             VkAccessFlagBits2 srcAccessMask,
+                             VkAccessFlagBits2 dstAccessMask,
+                             VkPipelineStageFlags2 srcStageMask,
+                             VkPipelineStageFlags2 dstStageMask, VkImage image,
+                             VkCommandBuffer commandBuffer) {
 
   VkImageMemoryBarrier2 barrier = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
@@ -40,10 +47,10 @@ void transition_image_layout(
       .newLayout = newLayout,
       .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-      .image = swapChainImage,
+      .image = image,
       .subresourceRange =
           {
-              .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+              .aspectMask = imageAspect,
               .baseMipLevel = 0,
               .levelCount = 1,
               .baseArrayLayer = 0,
@@ -70,17 +77,29 @@ void VKRender::beginFrame() {
 
   vkBeginCommandBuffer(vkCmd->getCommandBuffers()[frameIndex], &beginInfo);
 
-  transition_image_layout(imageIndex, VK_IMAGE_LAYOUT_UNDEFINED,
-                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, {},
+  transition_image_layout(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0,
                           VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
                           VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                           VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                           vkSwapchain->getswapchainImages()[imageIndex],
                           vkCmd->getCommandBuffers()[frameIndex]);
 
-  VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+  transition_image_layout(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+                          VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+                          VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                          VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                          VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+                              VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                          VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+                              VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                          depthTexture->getTextureImage(),
+                          vkCmd->getCommandBuffers()[frameIndex]);
 
-  VkExtent2D extent = vkSwapchain->getSwapchainExtent();
+  VkClearValue clearColor = {{{0.5f, 0.5f, 0.5f, 1.0f}}};
+  VkClearValue clearDepth = {{{1.0f, 0.0f}}};
+
+  const VkExtent2D &extent = vkSwapchain->getSwapchainExtent();
 
   VkViewport viewport = {
       .x = 0.0f,
@@ -96,6 +115,15 @@ void VKRender::beginFrame() {
       .extent = extent,
   };
 
+  VkRenderingAttachmentInfo depthAttachmentInfo{
+      .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+      .imageView = depthTexture->getTextureImageView(),
+      .imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+      .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+      .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+      .clearValue = clearDepth,
+  };
+
   VkRenderingAttachmentInfo attachmentInfo = {
       .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
       .imageView = vkSwapchain->getswapchainImageViews()[imageIndex],
@@ -107,10 +135,15 @@ void VKRender::beginFrame() {
 
   VkRenderingInfo renderingInfo = {
       .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-      .renderArea = scissor,
+      .renderArea =
+          {
+              .offset = {0, 0},
+              .extent = vkSwapchain->getSwapchainExtent(),
+          },
       .layerCount = 1,
       .colorAttachmentCount = 1,
       .pColorAttachments = &attachmentInfo,
+      .pDepthAttachment = &depthAttachmentInfo,
   };
 
   vkCmdBeginRendering(vkCmd->getCommandBuffers()[frameIndex], &renderingInfo);
@@ -121,13 +154,13 @@ void VKRender::beginFrame() {
 
 void VKRender::endFrame() {
   vkCmdEndRendering(vkCmd->getCommandBuffers()[frameIndex]);
-  transition_image_layout(imageIndex, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                          VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                          VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, {},
-                          VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                          VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
-                          vkSwapchain->getswapchainImages()[imageIndex],
-                          vkCmd->getCommandBuffers()[frameIndex]);
+  transition_image_layout(
+      VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+      {}, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+      VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
+      vkSwapchain->getswapchainImages()[imageIndex],
+      vkCmd->getCommandBuffers()[frameIndex]);
   vkEndCommandBuffer(vkCmd->getCommandBuffers()[frameIndex]);
 }
 
@@ -175,6 +208,9 @@ void VKRender::submitFrame() {
       vkContext->frameRsized) {
     vkContext->frameRsized = false;
     vkSwapchain->recreateSwapChain();
+    delete depthTexture;
+    depthTexture = new VKTexture(vkContext, vkCmd, vkSwapchain, nullptr,
+                                 MAI_DEPTH_TEXTURE);
   } else if (result != VK_SUCCESS)
     throw std::runtime_error("failed to present swap chain image");
 
@@ -220,5 +256,7 @@ void VKRender::cmdDrawIndex(uint32_t indexCount, uint32_t instanceCount,
   vkCmdDrawIndexed(vkCmd->getCommandBuffers()[frameIndex], indexCount,
                    instanceCount, firstIndex, vertexOffset, firstInstance);
 }
+
+VKRender::~VKRender() { delete depthTexture; }
 
 } // namespace MAI

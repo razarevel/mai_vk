@@ -93,27 +93,10 @@ void VKPipeline::createPipeline() {
       .primitiveRestartEnable = VK_FALSE,
   };
 
-  VkExtent2D extent = vkSwapchain->getSwapchainExtent();
-
-  VkViewport viewport{
-      .x = 0.0f,
-      .y = 0.0f,
-      .width = static_cast<float>(extent.width),
-      .height = static_cast<float>(extent.height),
-      .minDepth = 0.0f,
-      .maxDepth = 1.0f,
-  };
-  VkRect2D scissor = {
-      .offset = {0, 0},
-      .extent = extent,
-  };
-
   VkPipelineViewportStateCreateInfo viewportState{
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
       .viewportCount = 1,
-      .pViewports = &viewport,
       .scissorCount = 1,
-      .pScissors = &scissor,
   };
   VkPipelineRasterizationStateCreateInfo raserization{
       .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
@@ -147,10 +130,19 @@ void VKPipeline::createPipeline() {
 
   VkFormat format = vkSwapchain->getSwapchainImageFormat();
 
-  VkPipelineRenderingCreateInfo pipelineRenderCreateInfo{
+  VkPipelineRenderingCreateInfo pipelineRenderCreateInfo = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
       .colorAttachmentCount = 1,
       .pColorAttachmentFormats = &format,
+      .depthAttachmentFormat = VKTexture::findDepthFormat(vkContext),
+  };
+  VkPipelineDepthStencilStateCreateInfo depthStencil{
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+      .depthTestEnable = VK_TRUE,
+      .depthWriteEnable = VK_TRUE,
+      .depthCompareOp = VK_COMPARE_OP_LESS,
+      .depthBoundsTestEnable = VK_FALSE,
+      .stencilTestEnable = VK_FALSE,
   };
 
   VkGraphicsPipelineCreateInfo createInfo{
@@ -163,6 +155,7 @@ void VKPipeline::createPipeline() {
       .pViewportState = &viewportState,
       .pRasterizationState = &raserization,
       .pMultisampleState = &multiSampling,
+      .pDepthStencilState = &depthStencil,
       .pColorBlendState = &colorBlending,
       .pDynamicState = &dynamicState,
       .layout = pipelineLayout,
@@ -172,7 +165,7 @@ void VKPipeline::createPipeline() {
   if (vkCreateGraphicsPipelines(vkContext->getDevice(), nullptr, 1, &createInfo,
                                 nullptr, &pipeline) != VK_SUCCESS)
     throw std::runtime_error("failed to create graphics pipeline");
-}
+} // namespace MAI
 
 VKPipeline::~VKPipeline() {
   vkDestroyPipelineLayout(vkContext->getDevice(), pipelineLayout, nullptr);

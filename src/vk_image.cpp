@@ -3,13 +3,18 @@
 #include "stb_image.h"
 
 namespace MAI {
-VKTexture::VKTexture(VKContext *vkContext, VKCmd *vkCmd, VKbuffer *vkBuffer,
-                     const char *filename)
-    : vkContext(vkContext), vkCmd(vkCmd), vkBuffer(vkBuffer),
-      filename(filename) {
-  createTextureImage();
-  createTextureImageView();
-  createTextureSampler();
+VKTexture::VKTexture(VKContext *vkContext, VKCmd *vkCmd,
+                     VKSwapchain *vkSwapChain, const char *filename,
+                     TextureFormat format)
+    : vkContext(vkContext), vkCmd(vkCmd), vkSwapChain(vkSwapChain),
+      filename(filename), textureFormat(format) {
+  if (textureFormat == MAI_TEXTURE_2D) {
+    createTextureImage();
+    createTextureImageView(VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+    createTextureSampler();
+  } else if (textureFormat == MAI_DEPTH_TEXTURE) {
+    createDepthResources();
+  }
 }
 
 void VKTexture::createTextureImage() {
@@ -21,7 +26,8 @@ void VKTexture::createTextureImage() {
 
   VkBuffer stagingBuffer;
   VkDeviceMemory stagingBufferMemory;
-  vkBuffer->createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+
+  VKbuffer::createBuffer(vkContext, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                              VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                          stagingBuffer, stagingBufferMemory);
@@ -51,15 +57,16 @@ void VKTexture::createTextureImage() {
   vkFreeMemory(vkContext->getDevice(), stagingBufferMemory, nullptr);
 }
 
-void VKTexture::createTextureImageView() {
+void VKTexture::createTextureImageView(VkFormat format,
+                                       VkImageAspectFlags aspect) {
   VkImageViewCreateInfo viewInfo{
-      .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
       .image = texture,
       .viewType = VK_IMAGE_VIEW_TYPE_2D,
-      .format = VK_FORMAT_R8G8B8A8_SRGB,
+      .format = format,
       .subresourceRange =
           {
-              .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+              .aspectMask = aspect,
               .baseMipLevel = 0,
               .levelCount = 1,
               .baseArrayLayer = 0,
@@ -87,17 +94,25 @@ void VKTexture::createTextureSampler() {
       .mipLodBias = 0.0f,
       .anisotropyEnable = VK_TRUE,
       .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
-      .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
-      .unnormalizedCoordinates = VK_FALSE,
-      .compareEnable = VK_FALSE,
       .compareOp = VK_COMPARE_OP_ALWAYS,
-      .minLod = 0.0f,
-      .maxLod = 0.0f,
   };
+
+  samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+  samplerInfo.compareEnable = VK_FALSE;
+  samplerInfo.unnormalizedCoordinates = VK_FALSE;
 
   if (vkCreateSampler(vkContext->getDevice(), &samplerInfo, nullptr,
                       &textureSampler) != VK_SUCCESS)
     throw std::runtime_error("failed to creat texture sampler");
+}
+
+void VKTexture::createDepthResources() {
+  depthFormat = findDepthFormat(vkContext);
+  const VkExtent2D &extent = vkSwapChain->getSwapchainExtent();
+  createImage(extent.width, extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL,
+              VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+              VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, texture, textureMemory);
+  createTextureImageView(depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 void VKTexture::createImage(uint32_t width, uint32_t height, VkFormat format,
@@ -134,8 +149,9 @@ void VKTexture::createImage(uint32_t width, uint32_t height, VkFormat format,
   VkMemoryAllocateInfo allocInfo{
       .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
       .allocationSize = memRequirements.size,
-      .memoryTypeIndex = vkBuffer->findMemoryType(
-          memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+      .memoryTypeIndex =
+          VKbuffer::findMemoryType(vkContext, memRequirements.memoryTypeBits,
+                                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
   };
 
   if (vkAllocateMemory(vkContext->getDevice(), &allocInfo, nullptr,
@@ -154,7 +170,7 @@ void VKTexture::transitionImageLayout(VkImage image, VkFormat format,
       .oldLayout = oldLayout,
       .newLayout = newLayout,
       .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-      .dstQueueFamilyIndex = VK_QUEUE_COMPUTE_BIT,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       .image = image,
       .subresourceRange =
           {
@@ -219,9 +235,43 @@ void VKTexture::copyBufferToImage(VkBuffer buffer, VkImage image,
   vkCmd->endSingleCommandBuffer(commandBuffer);
 }
 
+VkFormat VKTexture::findSupportedFormat(VKContext *vkContext,
+                                        const std::vector<VkFormat> &candidates,
+                                        VkImageTiling tiling,
+                                        VkFormatFeatureFlags feature) {
+  for (const auto format : candidates) {
+    VkFormatProperties props;
+    vkGetPhysicalDeviceFormatProperties(vkContext->getPhysicalDevice(), format,
+                                        &props);
+    if (tiling == VK_IMAGE_TILING_LINEAR &&
+        (props.linearTilingFeatures & feature) == feature)
+      return format;
+    if (tiling == VK_IMAGE_TILING_OPTIMAL &&
+        (props.optimalTilingFeatures & feature) == feature)
+      return format;
+  }
+
+  assert(false);
+}
+
+bool hasStencilComponent(VkFormat format) {
+  return format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
+         format == VK_FORMAT_D24_UNORM_S8_UINT;
+}
+
+VkFormat VKTexture::findDepthFormat(VKContext *vkContext) {
+  return findSupportedFormat(
+      vkContext,
+      {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT,
+       VK_FORMAT_D24_UNORM_S8_UINT},
+      VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+}
+
 VKTexture::~VKTexture() {
 
-  vkDestroySampler(vkContext->getDevice(), textureSampler, nullptr);
+  if (textureSampler != VK_NULL_HANDLE)
+    vkDestroySampler(vkContext->getDevice(), textureSampler, nullptr);
+
   vkDestroyImageView(vkContext->getDevice(), textureView, nullptr);
 
   vkDestroyImage(vkContext->getDevice(), texture, nullptr);

@@ -14,7 +14,7 @@ void VKbuffer::initBuffer() {
   VkBuffer stagingBuffer;
   VkDeviceMemory stagingBufferMemory;
 
-  createBuffer(info_.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+  createBuffer(vkContext, info_.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                stagingBuffer, stagingBufferMemory);
@@ -26,7 +26,8 @@ void VKbuffer::initBuffer() {
   memcpy(data, info_.data, (size_t)info_.size);
   vkUnmapMemory(vkContext->getDevice(), stagingBufferMemory);
 
-  createBuffer(info_.size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | info_.usage,
+  createBuffer(vkContext, info_.size,
+               VK_BUFFER_USAGE_TRANSFER_DST_BIT | info_.usage,
                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer, bufferMemory);
   copyBuffer(stagingBuffer, buffer, info_.size);
 
@@ -39,7 +40,7 @@ void VKbuffer::createUniformBuffer() {
   uniformBufferMemory.resize(MAX_FRAMES_IN_FLIGHT);
   uniformBufferMapped.resize(MAX_FRAMES_IN_FLIGHT);
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-    createBuffer(info_.size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+    createBuffer(vkContext, info_.size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                  uniformBuffers[i], uniformBufferMemory[i]);
@@ -48,7 +49,8 @@ void VKbuffer::createUniformBuffer() {
   }
 }
 
-void VKbuffer::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
+void VKbuffer::createBuffer(VKContext *vkContext, VkDeviceSize size,
+                            VkBufferUsageFlags usage,
                             VkMemoryPropertyFlags properties, VkBuffer &buffer,
                             VkDeviceMemory &bufferMemory) {
 
@@ -71,7 +73,7 @@ void VKbuffer::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
       .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
       .allocationSize = memRequirements.size,
       .memoryTypeIndex =
-          findMemoryType(memRequirements.memoryTypeBits, properties),
+          findMemoryType(vkContext, memRequirements.memoryTypeBits, properties),
   };
 
   if (vkAllocateMemory(vkContext->getDevice(), &allocInfo, nullptr,
@@ -93,7 +95,7 @@ void VKbuffer::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer,
   vkCmd->endSingleCommandBuffer(commandBuffer);
 }
 
-uint32_t VKbuffer::findMemoryType(uint32_t typeFilter,
+uint32_t VKbuffer::findMemoryType(VKContext *vkContext, uint32_t typeFilter,
                                   VkMemoryPropertyFlags properties) {
   VkPhysicalDeviceMemoryProperties memProperties;
   vkGetPhysicalDeviceMemoryProperties(vkContext->getPhysicalDevice(),

@@ -2,12 +2,14 @@
 
 #include "mai_vk_backend/vk_cmd.h"
 #include "mai_vk_backend/vk_context.h"
+#include "mai_vk_backend/vk_image.h"
 #include "mai_vk_backend/vk_swapchain.h"
 #include "mai_vk_backend/vk_sync.h"
 namespace MAI {
 struct VKRender {
   VKRender(VKContext *vkContext, VKSync *vkSyncObj, VKSwapchain *vkSwapchain,
-           VKCmd *vkCmd);
+           VKCmd *vkCmd, VKTexture *texture);
+  ~VKRender();
 
   void beginFrame();
   void endFrame();
@@ -36,6 +38,7 @@ private:
   VKSync *vkSync;
   VKSwapchain *vkSwapchain;
   VKCmd *vkCmd;
+  VKTexture *depthTexture;
 
   uint32_t frameIndex = 0;
   uint32_t imageIndex;

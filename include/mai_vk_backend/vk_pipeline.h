@@ -1,5 +1,6 @@
 #pragma once
 #include "mai_vk_backend/vk_context.h"
+#include "mai_vk_backend/vk_image.h"
 #include "mai_vk_backend/vk_shader.h"
 #include "mai_vk_backend/vk_swapchain.h"
 namespace MAI {

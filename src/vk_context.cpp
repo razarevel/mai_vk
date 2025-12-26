@@ -259,7 +259,9 @@ void VKContext::createLogicalDevice() {
         .pQueuePriorities = &queuePriority,
     });
 
-  VkPhysicalDeviceFeatures deviceFeatures{};
+  VkPhysicalDeviceFeatures deviceFeatures{
+      .samplerAnisotropy = VK_TRUE,
+  };
 
   VkPhysicalDeviceExtendedDynamicStateFeaturesEXT dynamicStateFeatues = {
       .sType =

@@ -1,5 +1,7 @@
 #include "mai_renderer.h"
 #include "mai_vk_backend/vk_buffer.h"
+#include "mai_vk_backend/vk_descriptor.h"
+#include "mai_vk_backend/vk_image.h"
 #include "mai_vk_backend/vk_shader.h"
 
 #pragma once
@@ -11,7 +13,8 @@ struct MaiApp {
   MAI::VKbuffer *vertexBuffer = nullptr;
   MAI::VKbuffer *indexBuffer = nullptr;
   MAI::VKbuffer *uniformBuffer = nullptr;
-  std::vector<VkDescriptorSet> sets;
+  MAI::VKTexture *texture = nullptr;
+  MAI::VKDescriptor *descriptorSets = nullptr;
 
   void run();
   MAI::MAIRenderer *renderer = nullptr;

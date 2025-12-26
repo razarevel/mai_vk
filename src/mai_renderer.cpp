@@ -1,5 +1,4 @@
 #include "mai_renderer.h"
-#include <iostream>
 
 namespace MAI {
 MAIRenderer::MAIRenderer(uint32_t width, uint32_t height, const char *appName) {
@@ -8,8 +7,10 @@ MAIRenderer::MAIRenderer(uint32_t width, uint32_t height, const char *appName) {
   vkSwapchain = new VKSwapchain(vkContext);
   vkSyncObj = new VKSync(vkContext);
   vkCmd = new VKCmd(vkContext);
-  vkDescriptor = new VKDescriptor(vkContext);
-  vkRender = new VKRender(vkContext, vkSyncObj, vkSwapchain, vkCmd);
+  depthTexture =
+      new VKTexture(vkContext, vkCmd, vkSwapchain, nullptr, MAI_DEPTH_TEXTURE);
+  vkRender =
+      new VKRender(vkContext, vkSyncObj, vkSwapchain, vkCmd, depthTexture);
 }
 
 GLFWwindow *MAIRenderer::initWindow(uint32_t width, uint32_t height,
@@ -68,21 +69,15 @@ VKbuffer *MAIRenderer::createBuffer(BufferInfo info) {
   return buffer;
 }
 
-VkDescriptorSetLayout MAIRenderer::createDescriptorSetLayout(
-    std::vector<VkDescriptorSetLayoutBinding> uboLayouts) {
-  VkDescriptorSetLayout descriptorSetLayout =
-      vkDescriptor->createDescriptorSetLayout(uboLayouts);
-  return descriptorSetLayout;
+VKDescriptor *MAIRenderer::createDescriptor(DescriptorSetInfo info) {
+  VKDescriptor *descriptor = new VKDescriptor(vkContext, info);
+  return descriptor;
 }
 
-std::vector<VkDescriptorSet>
-MAIRenderer::createDescriptorSets(VkDescriptorSetLayout descriptorSetLayout,
-                                  const std::vector<VkBuffer> &uniformBuffers,
-                                  size_t bufferSize) {
-  std::vector<VkDescriptorSet> descriptorSet =
-      vkDescriptor->createDescriptorSets(descriptorSetLayout, uniformBuffers,
-                                         bufferSize);
-  return descriptorSet;
+VKTexture *MAIRenderer::createTexture(const char *filename) {
+  VKTexture *texture =
+      new VKTexture(vkContext, vkCmd, nullptr, filename, MAI_TEXTURE_2D);
+  return texture;
 }
 
 void MAIRenderer::bindRenderPipeline(VKPipeline *pipeline) {
@@ -126,20 +121,9 @@ void MAIRenderer::updateBuffer(VKbuffer *buffer, void *data, size_t size) {
   buffer->updateUniformBuffer(vkRender->getFrameIndex(), data, size);
 }
 
-void MAIRenderer::destroyDescriptorSetLayout(VkDescriptorSetLayout layout) {
-  vkDescriptor->destroyDescriptorSetLayouts(layout);
-}
-
-TextureModule MAIRenderer::createTexture(const char *filename) {
-  int w, h, comp;
-  stbi_uc *pixel =
-      stbi_load(RESOURCES_PATH "statue-1275469_1280.jpg", &w, &h, &comp, 4);
-}
-
 MAIRenderer::~MAIRenderer() {
   vkContext->waitForDevice();
   delete vkRender;
-  delete vkDescriptor;
   delete vkCmd;
   delete vkSyncObj;
   delete vkSwapchain;

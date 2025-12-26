@@ -4,6 +4,7 @@
 #include "mai_vk_backend/vk_cmd.h"
 #include "mai_vk_backend/vk_context.h"
 #include "mai_vk_backend/vk_descriptor.h"
+#include "mai_vk_backend/vk_image.h"
 #include "mai_vk_backend/vk_pipeline.h"
 #include "mai_vk_backend/vk_render.h"
 #include "mai_vk_backend/vk_shader.h"
@@ -27,8 +28,8 @@ struct MAIRenderer {
   VKSwapchain *vkSwapchain;
   VKSync *vkSyncObj;
   VKCmd *vkCmd;
-  VKDescriptor *vkDescriptor;
   VKRender *vkRender;
+  VKTexture *depthTexture;
 
   MAIRenderer(uint32_t width, uint32_t height, const char *appName);
   ~MAIRenderer();
@@ -38,13 +39,8 @@ struct MAIRenderer {
   VKShader *createShader(const char *filename, VkShaderStageFlagBits stage);
   VKPipeline *createPipeline(PipelineInfo info);
   VKbuffer *createBuffer(BufferInfo info);
-  VkDescriptorSetLayout createDescriptorSetLayout(
-      std::vector<VkDescriptorSetLayoutBinding> uboLayouts);
-
-  std::vector<VkDescriptorSet>
-  createDescriptorSets(VkDescriptorSetLayout descriptorSetLayout,
-                       const std::vector<VkBuffer> &uniformBuffers,
-                       size_t bufferSize);
+  VKDescriptor *createDescriptor(DescriptorSetInfo info);
+  VKTexture *createTexture(const char *filename);
 
   void bindRenderPipeline(VKPipeline *pipeline);
   void bindVertexBuffer(uint32_t firstBinding, VKbuffer *buffer,
@@ -65,8 +61,6 @@ struct MAIRenderer {
   void waitForDevice() { vkContext->waitForDevice(); }
 
   void destroyDescriptorSetLayout(VkDescriptorSetLayout layout);
-
-  TextureModule createTexture(const char *filename);
 
 private:
   GLFWwindow *initWindow(uint32_t width, uint32_t height, const char *appName);

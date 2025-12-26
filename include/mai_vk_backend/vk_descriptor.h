@@ -1,26 +1,37 @@
 #pragma once
 
+#include "mai_vk_backend/vk_buffer.h"
 #include "mai_vk_backend/vk_context.h"
+#include "mai_vk_backend/vk_image.h"
 namespace MAI {
 
+struct DescriptorSetInfo {
+  std::vector<VkDescriptorSetLayoutBinding> uboLayout;
+  std::vector<VKbuffer *> buffers;
+  std::vector<VKTexture *> textures;
+};
+
 struct VKDescriptor {
-  VKDescriptor(VKContext *vkContext);
+  VKDescriptor(VKContext *vkContext, DescriptorSetInfo info);
   ~VKDescriptor();
 
-  VkDescriptorSetLayout createDescriptorSetLayout(
-      const std::vector<VkDescriptorSetLayoutBinding> &uboLayouts);
+  VkDescriptorSetLayout getDescriptorSetLayout() const {
+    return descriptorSetLayout;
+  }
 
-  std::vector<VkDescriptorSet>
-  createDescriptorSets(VkDescriptorSetLayout descriptorSetLayout,
-                       const std::vector<VkBuffer> &uniformBuffers,
-                       size_t bufferSize);
-
-  void destroyDescriptorSetLayouts(VkDescriptorSetLayout layouts);
+  const std::vector<VkDescriptorSet> &getDescriptorSets() const {
+    return descriptorSets;
+  }
 
 private:
   VKContext *vkContext;
+  VkDescriptorSetLayout descriptorSetLayout;
   VkDescriptorPool descriptorPool;
+  std::vector<VkDescriptorSet> descriptorSets;
+  DescriptorSetInfo info_;
 
   void createDescriptorPool();
+  void createDescriptorSetLayout();
+  void createDescriptorSets();
 };
 }; // namespace MAI

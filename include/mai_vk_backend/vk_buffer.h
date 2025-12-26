@@ -5,7 +5,7 @@
 namespace MAI {
 
 struct BufferInfo {
-  const size_t size;
+  VkDeviceSize size;
   const void *data;
   VkBufferUsageFlagBits usage;
 };
@@ -16,6 +16,7 @@ struct VKbuffer {
 
   VkBuffer getBufferModule() const { return buffer; }
   VkBufferUsageFlagBits getBufferUsage() const { return info_.usage; };
+  VkDeviceSize getBufferSize() const { return info_.size; };
 
   void updateUniformBuffer(uint32_t curreImage, void *data, size_t size);
 
@@ -23,14 +24,15 @@ struct VKbuffer {
     return uniformBuffers;
   }
 
-  void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
-                    VkMemoryPropertyFlags properties, VkBuffer &buffer,
-                    VkDeviceMemory &bufferMemory);
+  static void createBuffer(VKContext *vkContext, VkDeviceSize size,
+                           VkBufferUsageFlags usage,
+                           VkMemoryPropertyFlags properties, VkBuffer &buffer,
+                           VkDeviceMemory &bufferMemory);
 
   void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
-  uint32_t findMemoryType(uint32_t typeFilter,
-                          VkMemoryPropertyFlags properties);
+  static uint32_t findMemoryType(VKContext *vkContext, uint32_t typeFilter,
+                                 VkMemoryPropertyFlags properties);
 
 private:
   VKContext *vkContext;

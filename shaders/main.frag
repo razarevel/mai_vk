@@ -5,6 +5,8 @@ layout(location = 1) in vec2 texCoords;
 
 layout(location = 0) out vec4 out_FragColor;
 
+layout(binding = 1) uniform sampler2D image;
+
 void main() {
-    out_FragColor = vec4(texCoords, 0.0f, 1.0f);
+    out_FragColor = texture(image, texCoords);
 }
