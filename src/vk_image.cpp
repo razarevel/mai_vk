@@ -10,7 +10,8 @@ VKTexture::VKTexture(VKContext *vkContext, VKCmd *vkCmd,
       filename(filename), textureFormat(format) {
   if (textureFormat == MAI_TEXTURE_2D) {
     createTextureImage();
-    createTextureImageView(VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+    createTextureImageView(VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_VIEW_TYPE_2D,
+                           VK_IMAGE_ASPECT_COLOR_BIT);
     createTextureSampler();
   } else if (textureFormat == MAI_DEPTH_TEXTURE) {
     createDepthResources();
@@ -40,7 +41,8 @@ void VKTexture::createTextureImage() {
 
   stbi_image_free(pixels);
 
-  createImage(w, h, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+  createImage(w, h, VK_IMAGE_TYPE_2D, VK_FORMAT_R8G8B8A8_SRGB,
+              VK_IMAGE_TILING_OPTIMAL,
               VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, texture, textureMemory);
 
@@ -58,11 +60,12 @@ void VKTexture::createTextureImage() {
 }
 
 void VKTexture::createTextureImageView(VkFormat format,
+                                       VkImageViewType viewType,
                                        VkImageAspectFlags aspect) {
   VkImageViewCreateInfo viewInfo{
       .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
       .image = texture,
-      .viewType = VK_IMAGE_VIEW_TYPE_2D,
+      .viewType = viewType,
       .format = format,
       .subresourceRange =
           {
@@ -109,20 +112,23 @@ void VKTexture::createTextureSampler() {
 void VKTexture::createDepthResources() {
   depthFormat = findDepthFormat(vkContext);
   const VkExtent2D &extent = vkSwapChain->getSwapchainExtent();
-  createImage(extent.width, extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL,
+  createImage(extent.width, extent.height, VK_IMAGE_TYPE_2D, depthFormat,
+              VK_IMAGE_TILING_OPTIMAL,
               VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, texture, textureMemory);
-  createTextureImageView(depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+  createTextureImageView(depthFormat, VK_IMAGE_VIEW_TYPE_2D,
+                         VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
-void VKTexture::createImage(uint32_t width, uint32_t height, VkFormat format,
-                            VkImageTiling tiling, VkImageUsageFlags usage,
+void VKTexture::createImage(uint32_t width, uint32_t height, VkImageType type,
+                            VkFormat format, VkImageTiling tiling,
+                            VkImageUsageFlags usage,
                             VkMemoryPropertyFlags properties, VkImage &image,
                             VkDeviceMemory &imageMemory) {
 
   VkImageCreateInfo imageInfo{
       .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-      .imageType = VK_IMAGE_TYPE_2D,
+      .imageType = type,
       .format = format,
       .extent =
           {
@@ -149,9 +155,8 @@ void VKTexture::createImage(uint32_t width, uint32_t height, VkFormat format,
   VkMemoryAllocateInfo allocInfo{
       .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
       .allocationSize = memRequirements.size,
-      .memoryTypeIndex =
-          VKbuffer::findMemoryType(vkContext, memRequirements.memoryTypeBits,
-                                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+      .memoryTypeIndex = VKbuffer::findMemoryType(
+          vkContext, memRequirements.memoryTypeBits, properties),
   };
 
   if (vkAllocateMemory(vkContext->getDevice(), &allocInfo, nullptr,

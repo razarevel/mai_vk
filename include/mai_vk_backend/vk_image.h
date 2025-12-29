@@ -17,10 +17,10 @@ struct VKTexture {
             TextureFormat format);
   ~VKTexture();
 
-  void createImage(uint32_t width, uint32_t height, VkFormat format,
-                   VkImageTiling tiling, VkImageUsageFlags usage,
-                   VkMemoryPropertyFlags properties, VkImage &image,
-                   VkDeviceMemory &imageMemory);
+  void createImage(uint32_t width, uint32_t height, VkImageType type,
+                   VkFormat format, VkImageTiling tiling,
+                   VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
+                   VkImage &image, VkDeviceMemory &imageMemory);
 
   VkImage getTextureImage() const { return texture; }
   VkImageView getTextureImageView() const { return textureView; }
@@ -43,7 +43,8 @@ private:
   VkFormat depthFormat;
 
   void createTextureImage();
-  void createTextureImageView(VkFormat format, VkImageAspectFlags aspect);
+  void createTextureImageView(VkFormat format, VkImageViewType viewType,
+                              VkImageAspectFlags aspect);
   void createTextureSampler();
 
   void createDepthResources();

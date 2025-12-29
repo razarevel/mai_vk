@@ -116,6 +116,12 @@ void MAIRenderer::cmdDrawIndex(uint32_t indexCount, uint32_t instanceCount,
                          firstInstance);
 }
 
+void MAIRenderer::updatePushConstant(VKPipeline *pipeline, uint32_t size,
+                                     const void *value) {
+  vkRender->cmdPushConstants(pipeline->getPipelineLayout(),
+                             VK_SHADER_STAGE_VERTEX_BIT, 0, size, value);
+}
+
 void MAIRenderer::updateBuffer(VKbuffer *buffer, void *data, size_t size) {
   assert(buffer->getBufferUsage() & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
   buffer->updateUniformBuffer(vkRender->getFrameIndex(), data, size);

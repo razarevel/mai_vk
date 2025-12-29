@@ -4,12 +4,14 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include "glm/glm.hpp"
+#include <assimp/cimport.h>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
 #include <chrono>
 #include <glm/gtc/matrix_transform.hpp>
 
 struct Vertex {
   glm::vec3 pos;
-  glm::vec3 color;
   glm::vec2 texCoords;
 };
 
@@ -20,7 +22,7 @@ struct UniformBufferObject {
 } ubo;
 
 std::vector<Vertex> vertices;
-const std::vector<uint32_t> indices;
+std::vector<uint32_t> indices;
 
 void MaiApp::run() {
   init();
@@ -30,10 +32,43 @@ void MaiApp::run() {
 void MaiApp::init() {
   uint32_t width = 1200, height = 800;
   const char *appName = "Mai Demo";
-
   renderer = new MAI::MAIRenderer(width, height, appName);
+
+  const aiScene *scene = aiImportFile(RESOURCES_PATH "rubber_duck/scene.gltf",
+                                      aiProcess_Triangulate);
+  assert(scene);
+
+  const aiMesh *mesh = scene->mMeshes[0];
+  vertices.reserve(mesh->mNumVertices);
+  indices.reserve(3 * mesh->mNumFaces);
+  for (size_t i = 0; i < mesh->mNumVertices; i++) {
+    const aiVector3D p = mesh->mVertices[i];
+    const aiVector3D t =
+        mesh->mTextureCoords[0] ? mesh->mTextureCoords[0][i] : aiVector3D(0.0f);
+    vertices.push_back({
+        .pos = glm::vec3(p.x, p.y, p.z),
+        .texCoords = glm::vec2(t.x, t.y),
+    });
+  }
+  for (size_t i = 0; i < mesh->mNumFaces; i++)
+    for (size_t j = 0; j != 3; j++)
+      indices.emplace_back(mesh->mFaces[i].mIndices[j]);
+
+  vertexBuffer = renderer->createBuffer({
+      .size = sizeof(vertices[0]) * vertices.size(),
+      .data = vertices.data(),
+      .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+  });
+
+  indexBuffer = renderer->createBuffer({
+      .size = sizeof(indices[0]) * indices.size(),
+      .data = indices.data(),
+      .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+  });
+
   vert = renderer->createShader(SHADERS_PATH "spvs/main.vspv",
                                 VK_SHADER_STAGE_VERTEX_BIT);
+
   frag = renderer->createShader(SHADERS_PATH "spvs/frag.fspv",
                                 VK_SHADER_STAGE_FRAGMENT_BIT);
 
@@ -49,12 +84,6 @@ void MaiApp::init() {
               {
                   .binding = 0,
                   .location = 1,
-                  .format = VK_FORMAT_R32G32B32_SFLOAT,
-                  .offset = offsetof(Vertex, color),
-              },
-              {
-                  .binding = 0,
-                  .location = 2,
                   .format = VK_FORMAT_R32G32_SFLOAT,
                   .offset = offsetof(Vertex, texCoords),
               },
@@ -67,52 +96,16 @@ void MaiApp::init() {
           },
   };
 
-  uniformBuffer = renderer->createBuffer({
-      .size = sizeof(ubo),
-      .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-  });
-
-  texture = renderer->createTexture(RESOURCES_PATH "wood.jpg");
-
-  MAI::DescriptorSetInfo descriptorInfo = {
-      .uboLayout =
-          {
-              {
-                  .binding = 0,
-                  .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                  .descriptorCount = 1,
-                  .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-              },
-              {
-                  .binding = 1,
-                  .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                  .descriptorCount = 1,
-                  .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-              },
-          },
-      .buffers = {uniformBuffer},
-      .textures = {texture},
-  };
-
-  descriptorSets = renderer->createDescriptor(descriptorInfo);
-
   pipeline = renderer->createPipeline({
       .vert = vert,
       .frag = frag,
-      .descriptorSetLayout = descriptorSets->getDescriptorSetLayout(),
       .vertInput = vertInput,
-  });
-
-  vertexBuffer = renderer->createBuffer({
-      .size = sizeof(vertices[0]) * vertices.size(),
-      .data = vertices.data(),
-      .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-  });
-
-  indexBuffer = renderer->createBuffer({
-      .size = sizeof(indices[0]) * indices.size(),
-      .data = indices.data(),
-      .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+      .pushConstants =
+          {
+              .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+              .offset = 0,
+              .size = sizeof(UniformBufferObject),
+          },
   });
 }
 
@@ -135,21 +128,16 @@ void MaiApp::mainLoop() {
     ubo.proj = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 10.0f);
     ubo.proj[1][1] *= -1;
 
-    renderer->updateBuffer(uniformBuffer, &ubo, sizeof(ubo));
-
     renderer->bindRenderPipeline(pipeline);
     renderer->bindVertexBuffer(0, vertexBuffer);
-    renderer->bindIndexBuffer(indexBuffer, 0, VK_INDEX_TYPE_UINT16);
-    renderer->bindDescriptorSet(pipeline, descriptorSets->getDescriptorSets());
+    renderer->bindIndexBuffer(indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+    renderer->updatePushConstant(pipeline, sizeof(ubo), &ubo);
     renderer->cmdDrawIndex(indices.size(), 1, 0);
   });
 }
 
 MaiApp::~MaiApp() {
   renderer->waitForDevice();
-  delete descriptorSets;
-  delete texture;
-  delete uniformBuffer;
   delete indexBuffer;
   delete vertexBuffer;
   delete pipeline;

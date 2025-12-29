@@ -57,6 +57,8 @@ struct MAIRenderer {
                     uint32_t firstIndex = 0, int32_t vertexOffset = 0,
                     uint32_t firstInstance = 0);
   void updateBuffer(VKbuffer *buffer, void *data, size_t size);
+  void updatePushConstant(VKPipeline *pipeline, uint32_t size,
+                          const void *value);
 
   void waitForDevice() { vkContext->waitForDevice(); }
 

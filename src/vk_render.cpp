@@ -257,6 +257,13 @@ void VKRender::cmdDrawIndex(uint32_t indexCount, uint32_t instanceCount,
                    instanceCount, firstIndex, vertexOffset, firstInstance);
 }
 
+void VKRender::cmdPushConstants(VkPipelineLayout pipelineLayout,
+                                VkShaderStageFlags shaderStage, uint32_t offset,
+                                uint32_t size, const void *value) {
+  vkCmdPushConstants(vkCmd->getCommandBuffers()[frameIndex], pipelineLayout,
+                     shaderStage, offset, size, value);
+}
+
 VKRender::~VKRender() { delete depthTexture; }
 
 } // namespace MAI

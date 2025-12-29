@@ -32,6 +32,9 @@ struct VKRender {
                             const VkDeviceSize *offsets);
   void cmdBindIndexBuffer(VkBuffer buffer, VkDeviceSize offset,
                           VkIndexType indexType);
+  void cmdPushConstants(VkPipelineLayout pipelineLayout,
+                        VkShaderStageFlags shaderStage, uint32_t offset,
+                        uint32_t size, const void *value);
 
 private:
   VKContext *vkContext;

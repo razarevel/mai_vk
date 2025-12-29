@@ -30,6 +30,7 @@ struct PipelineInfo {
   VertextInput vertInput;
   VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   VkPolygonMode polygon = VK_POLYGON_MODE_FILL;
+  VkPushConstantRange pushConstants;
 };
 
 struct VKPipeline {

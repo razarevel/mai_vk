@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_subdirectory(thirdParty/glfw)
+add_subdirectory(thirdParty/assimp)
 find_package(Vulkan REQUIRED)
 
 file(GLOB_RECURSE MY_SOURCES CONFIGURE_DEPENDS
@@ -25,6 +26,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     glfw
+		assimp
     Vulkan::Vulkan
 )
 

@@ -16,6 +16,11 @@ void VKPipeline::createPipelineLayout() {
       .pushConstantRangeCount = 0,
   };
 
+  if (info_.pushConstants.size > 0) {
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    pipelineLayoutInfo.pPushConstantRanges = &info_.pushConstants;
+  }
+
   if (info_.descriptorSetLayout != nullptr) {
     pipelineLayoutInfo.setLayoutCount = 1;
     pipelineLayoutInfo.pSetLayouts = &info_.descriptorSetLayout;
