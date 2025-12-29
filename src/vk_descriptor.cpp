@@ -1,6 +1,6 @@
-#include "mai_vk_backend/vk_descriptor.h"
-#include "mai_vk_backend/vk_context.h"
-#include<array>
+#include "vk_descriptor.h"
+#include "vk_context.h"
+#include <array>
 namespace MAI {
 
 VKDescriptor::VKDescriptor(VKContext *vkContext, DescriptorSetInfo info)
@@ -24,7 +24,7 @@ void VKDescriptor::createDescriptorSetLayout() {
 }
 
 void VKDescriptor::createDescriptorPool() {
-    std::array<VkDescriptorPoolSize, 2> poolSizes{};
+  std::array<VkDescriptorPoolSize, 2> poolSizes{};
 
   poolSizes[0] = {
       .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,

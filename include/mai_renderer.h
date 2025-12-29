@@ -1,15 +1,15 @@
 #pragma once
 
-#include "mai_vk_backend/vk_buffer.h"
-#include "mai_vk_backend/vk_cmd.h"
-#include "mai_vk_backend/vk_context.h"
-#include "mai_vk_backend/vk_descriptor.h"
-#include "mai_vk_backend/vk_image.h"
-#include "mai_vk_backend/vk_pipeline.h"
-#include "mai_vk_backend/vk_render.h"
-#include "mai_vk_backend/vk_shader.h"
-#include "mai_vk_backend/vk_swapchain.h"
-#include "mai_vk_backend/vk_sync.h"
+#include "vk_buffer.h"
+#include "vk_cmd.h"
+#include "vk_context.h"
+#include "vk_descriptor.h"
+#include "vk_image.h"
+#include "vk_pipeline.h"
+#include "vk_render.h"
+#include "vk_shader.h"
+#include "vk_swapchain.h"
+#include "vk_sync.h"
 #include <functional>
 
 namespace MAI {
@@ -40,7 +40,7 @@ struct MAIRenderer {
   VKPipeline *createPipeline(PipelineInfo info);
   VKbuffer *createBuffer(BufferInfo info);
   VKDescriptor *createDescriptor(DescriptorSetInfo info);
-  VKTexture *createTexture(const char *filename);
+  VKTexture *createTexture(const char *filename, TextureInfo info);
 
   void bindRenderPipeline(VKPipeline *pipeline);
   void bindVertexBuffer(uint32_t firstBinding, VKbuffer *buffer,

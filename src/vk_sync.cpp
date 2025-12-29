@@ -1,4 +1,4 @@
-#include "mai_vk_backend/vk_sync.h"
+#include "vk_sync.h"
 #include <iostream>
 
 namespace MAI {

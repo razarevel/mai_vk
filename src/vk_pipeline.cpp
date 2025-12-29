@@ -1,4 +1,5 @@
-#include "mai_vk_backend/vk_pipeline.h"
+#include "vk_pipeline.h"
+#include "vk_image.h"
 #include <cassert>
 
 namespace MAI {

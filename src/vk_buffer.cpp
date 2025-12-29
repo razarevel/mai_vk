@@ -1,4 +1,4 @@
-#include "mai_vk_backend/vk_buffer.h"
+#include "vk_buffer.h"
 
 namespace MAI {
 

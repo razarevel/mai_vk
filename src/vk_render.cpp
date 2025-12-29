@@ -1,4 +1,4 @@
-#include "mai_vk_backend/vk_render.h"
+#include "vk_render.h"
 #include <cassert>
 #include <iostream>
 
@@ -24,8 +24,8 @@ void VKRender::acquireSwapChainImageIndex() {
   if (result == VK_ERROR_OUT_OF_DATE_KHR) {
     vkSwapchain->recreateSwapChain();
     delete depthTexture;
-    depthTexture = new VKTexture(vkContext, vkCmd, vkSwapchain, nullptr,
-                                 MAI_DEPTH_TEXTURE);
+    depthTexture = new VKTexture(vkContext, vkCmd, vkSwapchain,
+                                 {.format = MAI_DEPTH_TEXTURE});
   }
 }
 
@@ -209,8 +209,8 @@ void VKRender::submitFrame() {
     vkContext->frameRsized = false;
     vkSwapchain->recreateSwapChain();
     delete depthTexture;
-    depthTexture = new VKTexture(vkContext, vkCmd, vkSwapchain, nullptr,
-                                 MAI_DEPTH_TEXTURE);
+    depthTexture = new VKTexture(vkContext, vkCmd, vkSwapchain, 
+        {.format = MAI_DEPTH_TEXTURE });
   } else if (result != VK_SUCCESS)
     throw std::runtime_error("failed to present swap chain image");
 

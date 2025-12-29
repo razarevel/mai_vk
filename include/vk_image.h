@@ -1,9 +1,10 @@
 #pragma once
 
-#include "mai_vk_backend/vk_buffer.h"
-#include "mai_vk_backend/vk_cmd.h"
-#include "mai_vk_backend/vk_context.h"
-#include "mai_vk_backend/vk_swapchain.h"
+#include "vk_buffer.h"
+#include "vk_cmd.h"
+#include "vk_context.h"
+#include "vk_swapchain.h"
+#include <cstdint>
 namespace MAI {
 
 enum TextureFormat : uint8_t {
@@ -11,10 +12,16 @@ enum TextureFormat : uint8_t {
   MAI_DEPTH_TEXTURE,
 };
 
+struct TextureInfo {
+  uint32_t width;
+  uint32_t height;
+  const void *data;
+  TextureFormat format = MAI_TEXTURE_2D;
+};
+
 struct VKTexture {
   VKTexture(VKContext *vkContext, VKCmd *vkCmdVKbuffer,
-            VKSwapchain *vkSwapChain, const char *filename,
-            TextureFormat format);
+            VKSwapchain *vkSwapChain, TextureInfo info);
   ~VKTexture();
 
   void createImage(uint32_t width, uint32_t height, VkImageType type,
@@ -25,14 +32,13 @@ struct VKTexture {
   VkImage getTextureImage() const { return texture; }
   VkImageView getTextureImageView() const { return textureView; }
   VkSampler getTextureImageSamper() const { return textureSampler; }
-  TextureFormat getTextureFormat() const { return textureFormat; }
+  TextureFormat getTextureFormat() const { return info_.format; }
   VkFormat getDepthFormat() const { return depthFormat; }
 
   static VkFormat findDepthFormat(VKContext *vkContext);
 
 private:
-  const char *filename;
-  TextureFormat textureFormat;
+  TextureInfo info_;
   VKContext *vkContext;
   VKSwapchain *vkSwapChain;
   VKCmd *vkCmd;

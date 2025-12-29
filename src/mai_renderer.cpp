@@ -7,8 +7,8 @@ MAIRenderer::MAIRenderer(uint32_t width, uint32_t height, const char *appName) {
   vkSwapchain = new VKSwapchain(vkContext);
   vkSyncObj = new VKSync(vkContext);
   vkCmd = new VKCmd(vkContext);
-  depthTexture =
-      new VKTexture(vkContext, vkCmd, vkSwapchain, nullptr, MAI_DEPTH_TEXTURE);
+  depthTexture = new VKTexture(vkContext, vkCmd, vkSwapchain,
+                               {.format = MAI_DEPTH_TEXTURE});
   vkRender =
       new VKRender(vkContext, vkSyncObj, vkSwapchain, vkCmd, depthTexture);
 }
@@ -74,9 +74,8 @@ VKDescriptor *MAIRenderer::createDescriptor(DescriptorSetInfo info) {
   return descriptor;
 }
 
-VKTexture *MAIRenderer::createTexture(const char *filename) {
-  VKTexture *texture =
-      new VKTexture(vkContext, vkCmd, nullptr, filename, MAI_TEXTURE_2D);
+VKTexture *MAIRenderer::createTexture(const char *filename, TextureInfo info) {
+  VKTexture *texture = new VKTexture(vkContext, vkCmd, nullptr, info);
   return texture;
 }
 

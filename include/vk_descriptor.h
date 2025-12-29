@@ -1,8 +1,8 @@
 #pragma once
 
-#include "mai_vk_backend/vk_buffer.h"
-#include "mai_vk_backend/vk_context.h"
-#include "mai_vk_backend/vk_image.h"
+#include "vk_buffer.h"
+#include "vk_context.h"
+#include "vk_image.h"
 namespace MAI {
 
 struct DescriptorSetInfo {

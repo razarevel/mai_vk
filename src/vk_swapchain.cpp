@@ -1,4 +1,4 @@
-#include "mai_vk_backend/vk_swapchain.h"
+#include "vk_swapchain.h"
 #include <algorithm>
 #include <cassert>
 #include <iostream>

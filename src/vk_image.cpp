@@ -1,28 +1,24 @@
-#include "mai_vk_backend/vk_image.h"
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include "vk_image.h"
 
 namespace MAI {
+
 VKTexture::VKTexture(VKContext *vkContext, VKCmd *vkCmd,
-                     VKSwapchain *vkSwapChain, const char *filename,
-                     TextureFormat format)
+                     VKSwapchain *vkSwapChain, TextureInfo info)
     : vkContext(vkContext), vkCmd(vkCmd), vkSwapChain(vkSwapChain),
-      filename(filename), textureFormat(format) {
-  if (textureFormat == MAI_TEXTURE_2D) {
+      info_(info) {
+  if (info_.format == MAI_TEXTURE_2D) {
     createTextureImage();
     createTextureImageView(VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_VIEW_TYPE_2D,
                            VK_IMAGE_ASPECT_COLOR_BIT);
     createTextureSampler();
-  } else if (textureFormat == MAI_DEPTH_TEXTURE) {
+  } else if (info_.format == MAI_DEPTH_TEXTURE) {
     createDepthResources();
   }
 }
 
 void VKTexture::createTextureImage() {
-  int w, h, comp;
-  stbi_uc *pixels = stbi_load(filename, &w, &h, &comp, STBI_rgb_alpha);
-  VkDeviceSize imageSize = w * h * 4;
-  if (!pixels)
+  VkDeviceSize imageSize = info_.width * info_.height * 4;
+  if (!info_.data)
     throw std::runtime_error("failed to load texture image!");
 
   VkBuffer stagingBuffer;
@@ -36,21 +32,19 @@ void VKTexture::createTextureImage() {
   void *data;
   vkMapMemory(vkContext->getDevice(), stagingBufferMemory, 0, imageSize, 0,
               &data);
-  memcpy(data, pixels, static_cast<size_t>(imageSize));
+  memcpy(data, info_.data, static_cast<size_t>(imageSize));
   vkUnmapMemory(vkContext->getDevice(), stagingBufferMemory);
 
-  stbi_image_free(pixels);
-
-  createImage(w, h, VK_IMAGE_TYPE_2D, VK_FORMAT_R8G8B8A8_SRGB,
-              VK_IMAGE_TILING_OPTIMAL,
+  createImage(info_.width, info_.height, VK_IMAGE_TYPE_2D,
+              VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
               VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, texture, textureMemory);
 
   transitionImageLayout(texture, VK_FORMAT_R8G8B8A8_SRGB,
                         VK_IMAGE_LAYOUT_UNDEFINED,
                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-  copyBufferToImage(stagingBuffer, texture, static_cast<uint32_t>(w),
-                    static_cast<uint32_t>(h));
+  copyBufferToImage(stagingBuffer, texture, static_cast<uint32_t>(info_.width),
+                    static_cast<uint32_t>(info_.height));
   transitionImageLayout(texture, VK_FORMAT_R8G8B8A8_SRGB,
                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
