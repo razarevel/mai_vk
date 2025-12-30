@@ -19,6 +19,12 @@ struct TextureModule {
   VkDeviceSize imageSize;
 };
 
+struct MAIRendererInfo {
+  uint32_t width, height;
+  const char *appName;
+  bool isFullScreen;
+};
+
 using DrawFrameFunc = std::function<void(
     uint32_t width, uint32_t height, float aspectRatio, float deltaSeconds)>;
 
@@ -30,8 +36,9 @@ struct MAIRenderer {
   VKCmd *vkCmd;
   VKRender *vkRender;
   VKTexture *depthTexture;
+  MAIRendererInfo info_;
 
-  MAIRenderer(uint32_t width, uint32_t height, const char *appName);
+  MAIRenderer(MAIRendererInfo info);
   ~MAIRenderer();
 
   void run(DrawFrameFunc drawFrame);
@@ -65,6 +72,6 @@ struct MAIRenderer {
   void destroyDescriptorSetLayout(VkDescriptorSetLayout layout);
 
 private:
-  GLFWwindow *initWindow(uint32_t width, uint32_t height, const char *appName);
+  GLFWwindow *initWindow();
 };
 }; // namespace MAI

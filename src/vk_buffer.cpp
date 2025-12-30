@@ -14,6 +14,9 @@ void VKbuffer::initBuffer() {
   VkBuffer stagingBuffer;
   VkDeviceMemory stagingBufferMemory;
 
+  if (info_.size <= 0)
+    throw std::runtime_error("buffer size must be greater than 0");
+
   createBuffer(vkContext, info_.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,

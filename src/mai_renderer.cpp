@@ -1,9 +1,9 @@
 #include "mai_renderer.h"
 
 namespace MAI {
-MAIRenderer::MAIRenderer(uint32_t width, uint32_t height, const char *appName) {
-  window = initWindow(width, height, appName);
-  vkContext = new VKContext(appName, window);
+MAIRenderer::MAIRenderer(MAIRendererInfo info) : info_(info) {
+  window = initWindow();
+  vkContext = new VKContext(info_.appName, window);
   vkSwapchain = new VKSwapchain(vkContext);
   vkSyncObj = new VKSync(vkContext);
   vkCmd = new VKCmd(vkContext);
@@ -13,15 +13,15 @@ MAIRenderer::MAIRenderer(uint32_t width, uint32_t height, const char *appName) {
       new VKRender(vkContext, vkSyncObj, vkSwapchain, vkCmd, depthTexture);
 }
 
-GLFWwindow *MAIRenderer::initWindow(uint32_t width, uint32_t height,
-                                    const char *appName) {
+GLFWwindow *MAIRenderer::initWindow() {
   if (!glfwInit())
     throw std::runtime_error("failed to init glfw");
 
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-  GLFWwindow *window =
-      glfwCreateWindow(width, height, appName, nullptr, nullptr);
+  GLFWwindow *window = glfwCreateWindow(
+      info_.width, info_.height, info_.appName,
+      info_.isFullScreen ? glfwGetPrimaryMonitor() : nullptr, nullptr);
 
   return window;
 }

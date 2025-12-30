@@ -1,10 +1,10 @@
 #pragma once
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-#include <vector>
-#include <optional>
 #include <cassert>
 #include <iostream>
+#include <optional>
+#include <vector>
 
 namespace MAI {
 
@@ -46,9 +46,9 @@ struct VKContext {
   QueueFamilyIndices getFamilyIndices() const { return indices; }
 
   void waitForDevice() {
-      if (vkDeviceWaitIdle(device) != VK_SUCCESS) {
-          std::cerr << "failed to wait for device" << std::endl;
-          assert(false);
+    if (vkDeviceWaitIdle(device) != VK_SUCCESS) {
+      std::cerr << "failed to wait for device" << std::endl;
+      assert(false);
     }
   }
 
