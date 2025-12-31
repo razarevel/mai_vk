@@ -12,8 +12,26 @@ VKDescriptor::VKDescriptor(VKContext *vkContext, DescriptorSetInfo info)
 
 void VKDescriptor::createDescriptorSetLayout() {
 
+  std::vector<VkDescriptorBindingFlags> bindingFlags = {
+      VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
+          VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT, // binding 0
+      VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
+          VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT |
+          VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT // binding 1
+                                                              // (highest)
+  };
+
+  VkDescriptorSetLayoutBindingFlagsCreateInfo flagsCreateInfo = {
+      .sType =
+          VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
+      .bindingCount = static_cast<uint32_t>(bindingFlags.size()),
+      .pBindingFlags = bindingFlags.data(),
+  };
+
   VkDescriptorSetLayoutCreateInfo layoutInfo{
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+      .pNext = &flagsCreateInfo,
+      .flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT,
       .bindingCount = static_cast<uint32_t>(info_.uboLayout.size()),
       .pBindings = info_.uboLayout.data(),
   };
@@ -24,25 +42,18 @@ void VKDescriptor::createDescriptorSetLayout() {
 }
 
 void VKDescriptor::createDescriptorPool() {
-  std::array<VkDescriptorPoolSize, 2> poolSizes{};
-
-  poolSizes[0] = {
-      .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-      .descriptorCount = static_cast<uint32_t>(info_.buffers.size()) *
-                         static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
-  };
-
-  poolSizes[1] = {
-      .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-      .descriptorCount = static_cast<uint32_t>(info_.textures.size()) *
-                         static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
+  // std::array<VkDescriptorPoolSize, 2> poolSizes{};
+  VkDescriptorPoolSize poolSizes[] = {
+      {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_TEXTURES},
+      {VK_DESCRIPTOR_TYPE_SAMPLER, MAX_TEXTURES},
   };
 
   VkDescriptorPoolCreateInfo poolInfo{
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+      .flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT,
       .maxSets = MAX_FRAMES_IN_FLIGHT,
-      .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
-      .pPoolSizes = poolSizes.data(),
+      .poolSizeCount = 2,
+      .pPoolSizes = poolSizes,
   };
 
   if (vkCreateDescriptorPool(vkContext->getDevice(), &poolInfo, nullptr,
@@ -56,8 +67,17 @@ void VKDescriptor::createDescriptorSets() {
 
   std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT,
                                              descriptorSetLayout);
+  uint32_t counts[] = {MAX_TEXTURES, MAX_TEXTURES};
+  VkDescriptorSetVariableDescriptorCountAllocateInfo countInfo{
+      .sType =
+          VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO,
+      .descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
+      .pDescriptorCounts = counts,
+  };
+
   VkDescriptorSetAllocateInfo allocInfo{
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+      .pNext = &countInfo,
       .descriptorPool = descriptorPool,
       .descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
       .pSetLayouts = layouts.data(),
@@ -66,56 +86,40 @@ void VKDescriptor::createDescriptorSets() {
   if (vkAllocateDescriptorSets(vkContext->getDevice(), &allocInfo,
                                descriptorSets.data()) != VK_SUCCESS)
     throw std::runtime_error("failed to allocate descriptor set");
+}
+
+void VKDescriptor::updateDescriptorImageWrite(VkImageView imageView,
+                                              VkSampler sampler,
+                                              uint32_t imageIndex) {
+  VkDescriptorImageInfo imageInfo{
+      .imageView = imageView,
+      .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+  };
+  VkDescriptorImageInfo samplerInfo{
+      .sampler = sampler,
+  };
 
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-
-    std::vector<VkDescriptorBufferInfo> bufferInfos;
-    bufferInfos.reserve(info_.buffers.size());
-
-    for (size_t j = 0; j < info_.buffers.size(); j++) {
-      assert(info_.buffers[j]->getBufferUsage() &
-             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-
-      bufferInfos.push_back({
-          .buffer = info_.buffers[j]->getUniformBuffers()[i],
-          .offset = j,
-          .range = info_.buffers[j]->getBufferSize(),
-      });
-    }
-
-    std::vector<VkDescriptorImageInfo> imageInfos;
-    imageInfos.reserve(info_.textures.size());
-
-    for (size_t j = 0; j < info_.textures.size(); j++)
-      imageInfos.push_back({
-          .sampler = info_.textures[j]->getTextureImageSamper(),
-          .imageView = info_.textures[j]->getTextureImageView(),
-          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      });
-
     std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
     descriptorWrites[0] = {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstSet = descriptorSets[i],
         .dstBinding = 0,
-        .dstArrayElement = 0,
+        .dstArrayElement = imageIndex,
         .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .pBufferInfo = bufferInfos.data(),
+        .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+        .pImageInfo = &imageInfo,
     };
-
     descriptorWrites[1] = {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstSet = descriptorSets[i],
-        .dstBinding = static_cast<uint32_t>(info_.buffers.size()),
-        .dstArrayElement = 0,
+        .dstBinding = 1,
+        .dstArrayElement = imageIndex,
         .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .pImageInfo = imageInfos.data(),
+        .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+        .pImageInfo = &samplerInfo,
     };
-
-    vkUpdateDescriptorSets(vkContext->getDevice(),
-                           static_cast<uint32_t>(descriptorWrites.size()),
+    vkUpdateDescriptorSets(vkContext->getDevice(), descriptorWrites.size(),
                            descriptorWrites.data(), 0, nullptr);
   }
 }

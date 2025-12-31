@@ -259,13 +259,24 @@ void VKContext::createLogicalDevice() {
         .pQueuePriorities = &queuePriority,
     });
 
+  VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES,
+      .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
+      .descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,
+      .descriptorBindingPartiallyBound = VK_TRUE,
+      .descriptorBindingVariableDescriptorCount = VK_TRUE,
+      .runtimeDescriptorArray = VK_TRUE,
+  };
+
   VkPhysicalDeviceFeatures deviceFeatures{
+      .fillModeNonSolid = VK_TRUE,
       .samplerAnisotropy = VK_TRUE,
   };
 
   VkPhysicalDeviceExtendedDynamicStateFeaturesEXT dynamicStateFeatues = {
       .sType =
           VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT,
+      .pNext = &indexingFeatures,
       .extendedDynamicState = true,
   };
 

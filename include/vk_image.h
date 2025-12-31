@@ -15,8 +15,9 @@ enum TextureFormat : uint8_t {
 struct TextureInfo {
   uint32_t width;
   uint32_t height;
-  const void *data;
+  const void *data = nullptr;
   TextureFormat format = MAI_TEXTURE_2D;
+  uint32_t numMipLevels = 1;
 };
 
 struct VKTexture {
@@ -37,6 +38,9 @@ struct VKTexture {
 
   static VkFormat findDepthFormat(VKContext *vkContext);
 
+  void setTextureIndex(uint32_t count) { textureIndex = count; }
+  uint32_t getTextureIndex() const { return textureIndex; }
+
 private:
   TextureInfo info_;
   VKContext *vkContext;
@@ -47,6 +51,7 @@ private:
   VkSampler textureSampler = VK_NULL_HANDLE;
   VkDeviceMemory textureMemory;
   VkFormat depthFormat;
+  uint32_t textureIndex;
 
   void createTextureImage();
   void createTextureImageView(VkFormat format, VkImageViewType viewType,

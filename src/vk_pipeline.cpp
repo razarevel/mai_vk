@@ -109,7 +109,7 @@ void VKPipeline::createPipeline() {
       .depthClampEnable = VK_FALSE,
       .rasterizerDiscardEnable = VK_FALSE,
       .polygonMode = info_.polygon,
-      .cullMode = VK_CULL_MODE_BACK_BIT,
+      .cullMode = info_.cullMode,
       .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
       .depthBiasEnable = VK_FALSE,
       .lineWidth = 1.0f,

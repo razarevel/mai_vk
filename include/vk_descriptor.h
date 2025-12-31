@@ -7,8 +7,6 @@ namespace MAI {
 
 struct DescriptorSetInfo {
   std::vector<VkDescriptorSetLayoutBinding> uboLayout;
-  std::vector<VKbuffer *> buffers;
-  std::vector<VKTexture *> textures;
 };
 
 struct VKDescriptor {
@@ -22,6 +20,9 @@ struct VKDescriptor {
   const std::vector<VkDescriptorSet> &getDescriptorSets() const {
     return descriptorSets;
   }
+
+  void updateDescriptorImageWrite(VkImageView imageView, VkSampler sampler,
+                                  uint32_t imageIndex);
 
 private:
   VKContext *vkContext;

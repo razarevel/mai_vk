@@ -27,9 +27,10 @@ struct PipelineInfo {
   VKShader *frag = nullptr;
   VkDescriptorSetLayout descriptorSetLayout = nullptr;
   VertextInput vertInput;
+  VkPushConstantRange pushConstants;
   VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   VkPolygonMode polygon = VK_POLYGON_MODE_FILL;
-  VkPushConstantRange pushConstants;
+  VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
 };
 
 struct VKPipeline {
@@ -38,6 +39,9 @@ struct VKPipeline {
 
   VkPipeline getPipeline() const { return pipeline; }
   VkPipelineLayout getPipelineLayout() const { return pipelineLayout; }
+  VkShaderStageFlags getPushConstantShaderStages() const {
+    return info_.pushConstants.stageFlags;
+  }
 
 private:
   VKContext *vkContext;

@@ -9,6 +9,7 @@
 namespace MAI {
 
 constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
+constexpr uint32_t MAX_TEXTURES = 4060;
 
 struct QueueFamilyIndices {
   std::optional<uint32_t> graphcisFamily;

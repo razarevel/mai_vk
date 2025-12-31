@@ -11,7 +11,7 @@ struct VKRender {
            VKCmd *vkCmd, VKTexture *texture);
   ~VKRender();
 
-  void beginFrame();
+  void beginFrame(float clearValue[4]);
   void endFrame();
   void submitFrame();
   uint32_t getFrameIndex() const { return frameIndex; }

@@ -22,6 +22,7 @@ struct TextureModule {
 struct MAIRendererInfo {
   uint32_t width, height;
   const char *appName;
+  float clearColor[4] = {0.25f, 0.25f, 0.25f, 1.0f};
   bool isFullScreen;
 };
 
@@ -37,6 +38,8 @@ struct MAIRenderer {
   VKRender *vkRender;
   VKTexture *depthTexture;
   MAIRendererInfo info_;
+  VKPipeline *lastBindPipeline_ = nullptr;
+  VKDescriptor *globalDescriptor = nullptr;
 
   MAIRenderer(MAIRendererInfo info);
   ~MAIRenderer();
@@ -47,7 +50,7 @@ struct MAIRenderer {
   VKPipeline *createPipeline(PipelineInfo info);
   VKbuffer *createBuffer(BufferInfo info);
   VKDescriptor *createDescriptor(DescriptorSetInfo info);
-  VKTexture *createTexture(const char *filename, TextureInfo info);
+  VKTexture *createTexture(TextureInfo info);
 
   void bindRenderPipeline(VKPipeline *pipeline);
   void bindVertexBuffer(uint32_t firstBinding, VKbuffer *buffer,
@@ -57,21 +60,20 @@ struct MAIRenderer {
   void bindDescriptorSet(VKPipeline *pipeline,
                          const std::vector<VkDescriptorSet> &sets);
 
-  void cmdDraw(uint32_t vertexCount, uint32_t instanceCount,
+  void cmdDraw(uint32_t vertexCount, uint32_t instanceCount = 1,
                uint32_t firstIndex = 0, uint32_t firstIntance = 0);
 
-  void cmdDrawIndex(uint32_t indexCount, uint32_t instanceCount,
+  void cmdDrawIndex(uint32_t indexCount, uint32_t instanceCount = 1,
                     uint32_t firstIndex = 0, int32_t vertexOffset = 0,
                     uint32_t firstInstance = 0);
   void updateBuffer(VKbuffer *buffer, void *data, size_t size);
-  void updatePushConstant(VKPipeline *pipeline, uint32_t size,
-                          const void *value);
+  void updatePushConstant(uint32_t size, const void *value);
 
   void waitForDevice() { vkContext->waitForDevice(); }
 
-  void destroyDescriptorSetLayout(VkDescriptorSetLayout layout);
-
 private:
+  uint32_t lastTextureCount = 0;
   GLFWwindow *initWindow();
+  void createGlobalDescriptor();
 };
 }; // namespace MAI

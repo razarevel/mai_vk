@@ -66,7 +66,7 @@ void transition_image_layout(VkImageAspectFlags imageAspect,
   vkCmdPipelineBarrier2(commandBuffer, &dependencyInfo);
 }
 
-void VKRender::beginFrame() {
+void VKRender::beginFrame(float clearValue[4]) {
   acquireSwapChainImageIndex();
 
   VkCommandBufferBeginInfo beginInfo{
@@ -96,14 +96,15 @@ void VKRender::beginFrame() {
                           depthTexture->getTextureImage(),
                           vkCmd->getCommandBuffers()[frameIndex]);
 
-  VkClearValue clearColor = {{{0.5f, 0.5f, 0.5f, 1.0f}}};
+  VkClearValue clearColor = {
+      {{clearValue[0], clearValue[1], clearValue[2], clearValue[3]}}};
   VkClearValue clearDepth = {{{1.0f, 0.0f}}};
 
   const VkExtent2D &extent = vkSwapchain->getSwapchainExtent();
 
   VkViewport viewport = {
       .x = 0.0f,
-      .y = 0.0,
+      .y = 0.0f,
       .width = static_cast<float>(extent.width),
       .height = static_cast<float>(extent.height),
       .minDepth = 0.0,
