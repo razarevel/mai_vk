@@ -81,13 +81,27 @@ VKDescriptor *MAIRenderer::createDescriptor(DescriptorSetInfo info) {
 
 VKTexture *MAIRenderer::createTexture(TextureInfo info) {
   VKTexture *texture = new VKTexture(vkContext, vkCmd, nullptr, info);
-  if (lastTextureCount != 0)
+
+  if (info.format == MAI_TEXTURE_2D) {
     lastTextureCount++;
-  assert(lastTextureCount < MAX_TEXTURES);
-  texture->setTextureIndex(lastTextureCount);
-  globalDescriptor->updateDescriptorImageWrite(texture->getTextureImageView(),
-                                               texture->getTextureImageSamper(),
-                                               lastTextureCount);
+
+    assert(lastTextureCount < MAX_TEXTURES);
+    texture->setTextureIndex(lastTextureCount);
+
+    globalDescriptor->updateDescriptorImageWrite(
+        texture->getTextureImageView(), texture->getTextureImageSamper(),
+        lastTextureCount);
+  } else if (info.format == MAI_TEXTURE_CUBE) {
+    lastCubemapCount++;
+
+    assert(lastCubemapCount < MAX_TEXTURES);
+    texture->setTextureIndex(lastCubemapCount);
+
+    globalDescriptor->updateDescriptorImageWrite(
+        texture->getTextureImageView(), texture->getTextureImageSamper(),
+        lastCubemapCount, true);
+  }
+
   return texture;
 }
 
@@ -154,10 +168,16 @@ void MAIRenderer::updateBuffer(VKbuffer *buffer, void *data, size_t size) {
   buffer->updateUniformBuffer(vkRender->getFrameIndex(), data, size);
 }
 
+void MAIRenderer::BindDepthState(DepthInfo info) {
+  assert(lastBindPipeline_);
+  vkRender->cmdBindDepthState(info);
+}
+
 void MAIRenderer::createGlobalDescriptor() {
   DescriptorSetInfo info = {
       .uboLayout =
           {
+              // 2d textures
               {
                   .binding = 0,
                   .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
@@ -167,6 +187,13 @@ void MAIRenderer::createGlobalDescriptor() {
               {
                   .binding = 1,
                   .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+                  .descriptorCount = MAX_TEXTURES * MAX_FRAMES_IN_FLIGHT,
+                  .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+              },
+              // cubemap
+              {
+                  .binding = 2,
+                  .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
                   .descriptorCount = MAX_TEXTURES * MAX_FRAMES_IN_FLIGHT,
                   .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
               },

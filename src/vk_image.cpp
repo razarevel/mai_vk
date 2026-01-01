@@ -1,5 +1,5 @@
 #include "vk_image.h"
-
+#include <array>
 namespace MAI {
 
 VKTexture::VKTexture(VKContext *vkContext, VKCmd *vkCmd,
@@ -11,13 +11,22 @@ VKTexture::VKTexture(VKContext *vkContext, VKCmd *vkCmd,
     createTextureImageView(VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_VIEW_TYPE_2D,
                            VK_IMAGE_ASPECT_COLOR_BIT);
     createTextureSampler();
+  } else if (info_.format == MAI_TEXTURE_CUBE) {
+    createTextureImage();
+    createTextureImageView(VK_FORMAT_R32G32B32A32_SFLOAT,
+                           VK_IMAGE_VIEW_TYPE_CUBE, VK_IMAGE_ASPECT_COLOR_BIT);
+    createTextureSampler();
   } else if (info_.format == MAI_DEPTH_TEXTURE) {
     createDepthResources();
-  }
+  } else
+    assert(false);
 }
 
 void VKTexture::createTextureImage() {
   VkDeviceSize imageSize = info_.width * info_.height * 4;
+  if (info_.format == MAI_TEXTURE_CUBE)
+    imageSize *= sizeof(float) * 6;
+
   if (!info_.data)
     throw std::runtime_error("failed to load texture image!");
 
@@ -36,16 +45,24 @@ void VKTexture::createTextureImage() {
   vkUnmapMemory(vkContext->getDevice(), stagingBufferMemory);
 
   createImage(info_.width, info_.height, VK_IMAGE_TYPE_2D,
-              VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+              info_.format == MAI_TEXTURE_2D ? VK_FORMAT_R8G8B8A8_SRGB
+                                             : VK_FORMAT_R32G32B32A32_SFLOAT,
+              VK_IMAGE_TILING_OPTIMAL,
               VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, texture, textureMemory);
 
-  transitionImageLayout(texture, VK_FORMAT_R8G8B8A8_SRGB,
-                        VK_IMAGE_LAYOUT_UNDEFINED,
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  transitionImageLayout(
+      texture,
+      info_.format == MAI_TEXTURE_2D ? VK_FORMAT_R8G8B8A8_SRGB
+                                     : VK_FORMAT_R32G32B32A32_SFLOAT,
+      VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   copyBufferToImage(stagingBuffer, texture, static_cast<uint32_t>(info_.width),
                     static_cast<uint32_t>(info_.height));
-  transitionImageLayout(texture, VK_FORMAT_R8G8B8A8_SRGB,
+
+  transitionImageLayout(texture,
+                        info_.format == MAI_TEXTURE_2D
+                            ? VK_FORMAT_R8G8B8A8_SRGB
+                            : VK_FORMAT_R32G32B32A32_SFLOAT,
                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
@@ -71,6 +88,10 @@ void VKTexture::createTextureImageView(VkFormat format,
           },
   };
 
+  if (info_.format == MAI_TEXTURE_CUBE) {
+    viewInfo.subresourceRange.layerCount = 6;
+  }
+
   if (vkCreateImageView(vkContext->getDevice(), &viewInfo, nullptr,
                         &textureView) != VK_SUCCESS)
     throw std::runtime_error("failed to create image view");
@@ -93,6 +114,12 @@ void VKTexture::createTextureSampler() {
       .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
       .compareOp = VK_COMPARE_OP_ALWAYS,
   };
+
+  if (info_.format == MAI_TEXTURE_CUBE) {
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  }
 
   samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
   samplerInfo.compareEnable = VK_FALSE;
@@ -139,6 +166,12 @@ void VKTexture::createImage(uint32_t width, uint32_t height, VkImageType type,
       .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
   };
 
+  if (info_.format == MAI::MAI_TEXTURE_CUBE) {
+    imageInfo.arrayLayers = 6;
+    imageInfo.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+  }
+
   if (vkCreateImage(vkContext->getDevice(), &imageInfo, nullptr, &image) !=
       VK_SUCCESS)
     throw std::runtime_error("failed to create texture image");
@@ -177,7 +210,8 @@ void VKTexture::transitionImageLayout(VkImage image, VkFormat format,
               .baseMipLevel = 0,
               .levelCount = 1,
               .baseArrayLayer = 0,
-              .layerCount = 1,
+              .layerCount =
+                  info_.format == MAI_TEXTURE_CUBE ? (uint32_t)6 : (uint32_t)1,
           },
   };
 
@@ -212,24 +246,47 @@ void VKTexture::copyBufferToImage(VkBuffer buffer, VkImage image,
 
   VkCommandBuffer commandBuffer = vkCmd->beginSingleCommandBuffer();
 
-  VkBufferImageCopy region{
-      .bufferOffset = 0,
-      .bufferRowLength = 0,
-      .bufferImageHeight = 0,
+  if (info_.format == MAI_TEXTURE_2D) {
+    VkBufferImageCopy region{
+        .bufferOffset = 0,
+        .bufferRowLength = 0,
+        .bufferImageHeight = 0,
 
-      .imageSubresource =
-          {
-              .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-              .mipLevel = 0,
-              .baseArrayLayer = 0,
-              .layerCount = 1,
-          },
-      .imageOffset = {0, 0, 0},
-      .imageExtent = {width, height, 1},
-  };
+        .imageSubresource =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .mipLevel = 0,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        .imageOffset = {0, 0, 0},
+        .imageExtent = {width, height, 1},
+    };
 
-  vkCmdCopyBufferToImage(commandBuffer, buffer, image,
-                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+    vkCmdCopyBufferToImage(commandBuffer, buffer, image,
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+  } else if (info_.format == MAI_TEXTURE_CUBE) {
+    std::array<VkBufferImageCopy, 6> regions{};
+    VkDeviceSize faceSize = width * height * 4 * sizeof(float);
+    for (uint32_t face = 0; face < 6; face++) {
+      regions[face].bufferOffset = face * faceSize;
+      regions[face].bufferRowLength = 0;
+      regions[face].bufferImageHeight = 0;
+
+      regions[face].imageSubresource = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .mipLevel = 0,
+          .baseArrayLayer = face,
+          .layerCount = 1,
+      };
+      regions[face].imageOffset = {0, 0, 0};
+      regions[face].imageExtent = {width, height, 1};
+    }
+
+    vkCmdCopyBufferToImage(
+        commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        static_cast<uint32_t>(regions.size()), regions.data());
+  }
 
   vkCmd->endSingleCommandBuffer(commandBuffer);
 }

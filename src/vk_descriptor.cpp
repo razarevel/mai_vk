@@ -13,12 +13,19 @@ VKDescriptor::VKDescriptor(VKContext *vkContext, DescriptorSetInfo info)
 void VKDescriptor::createDescriptorSetLayout() {
 
   std::vector<VkDescriptorBindingFlags> bindingFlags = {
+      // binding 0
+      // (2D texture)
       VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
-          VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT, // binding 0
+          VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+      // binding 1
+      // (sampler)
       VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
           VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT |
-          VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT // binding 1
-                                                              // (highest)
+          // binding 2
+          // (cubemap)
+          VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
+          VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+      VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT,
   };
 
   VkDescriptorSetLayoutBindingFlagsCreateInfo flagsCreateInfo = {
@@ -44,15 +51,16 @@ void VKDescriptor::createDescriptorSetLayout() {
 void VKDescriptor::createDescriptorPool() {
   // std::array<VkDescriptorPoolSize, 2> poolSizes{};
   VkDescriptorPoolSize poolSizes[] = {
-      {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_TEXTURES},
+      {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, MAX_TEXTURES},
       {VK_DESCRIPTOR_TYPE_SAMPLER, MAX_TEXTURES},
+      {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, MAX_TEXTURES},
   };
 
   VkDescriptorPoolCreateInfo poolInfo{
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
       .flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT,
       .maxSets = MAX_FRAMES_IN_FLIGHT,
-      .poolSizeCount = 2,
+      .poolSizeCount = 3,
       .pPoolSizes = poolSizes,
   };
 
@@ -90,7 +98,8 @@ void VKDescriptor::createDescriptorSets() {
 
 void VKDescriptor::updateDescriptorImageWrite(VkImageView imageView,
                                               VkSampler sampler,
-                                              uint32_t imageIndex) {
+                                              uint32_t imageIndex,
+                                              bool isCubemap) {
   VkDescriptorImageInfo imageInfo{
       .imageView = imageView,
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -110,6 +119,9 @@ void VKDescriptor::updateDescriptorImageWrite(VkImageView imageView,
         .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
         .pImageInfo = &imageInfo,
     };
+    if (isCubemap)
+      descriptorWrites[0].dstBinding = 2;
+
     descriptorWrites[1] = {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstSet = descriptorSets[i],
@@ -119,6 +131,7 @@ void VKDescriptor::updateDescriptorImageWrite(VkImageView imageView,
         .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
         .pImageInfo = &samplerInfo,
     };
+
     vkUpdateDescriptorSets(vkContext->getDevice(), descriptorWrites.size(),
                            descriptorWrites.data(), 0, nullptr);
   }

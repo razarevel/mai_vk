@@ -30,16 +30,6 @@ using DrawFrameFunc = std::function<void(
     uint32_t width, uint32_t height, float aspectRatio, float deltaSeconds)>;
 
 struct MAIRenderer {
-  GLFWwindow *window = nullptr;
-  VKContext *vkContext;
-  VKSwapchain *vkSwapchain;
-  VKSync *vkSyncObj;
-  VKCmd *vkCmd;
-  VKRender *vkRender;
-  VKTexture *depthTexture;
-  MAIRendererInfo info_;
-  VKPipeline *lastBindPipeline_ = nullptr;
-  VKDescriptor *globalDescriptor = nullptr;
 
   MAIRenderer(MAIRendererInfo info);
   ~MAIRenderer();
@@ -70,9 +60,25 @@ struct MAIRenderer {
   void updatePushConstant(uint32_t size, const void *value);
 
   void waitForDevice() { vkContext->waitForDevice(); }
+  void BindDepthState(DepthInfo info);
+
+  GLFWwindow *getWindow() const { return window; }
 
 private:
-  uint32_t lastTextureCount = 0;
+  uint32_t lastTextureCount = -1;
+  uint32_t lastCubemapCount = -1;
+
+  GLFWwindow *window = nullptr;
+  VKContext *vkContext;
+  VKSwapchain *vkSwapchain;
+  VKSync *vkSyncObj;
+  VKCmd *vkCmd;
+  VKRender *vkRender;
+  VKTexture *depthTexture;
+  MAIRendererInfo info_;
+  VKPipeline *lastBindPipeline_ = nullptr;
+  VKDescriptor *globalDescriptor = nullptr;
+
   GLFWwindow *initWindow();
   void createGlobalDescriptor();
 };

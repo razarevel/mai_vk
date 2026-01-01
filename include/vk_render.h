@@ -6,6 +6,12 @@
 #include "vk_swapchain.h"
 #include "vk_sync.h"
 namespace MAI {
+
+struct DepthInfo {
+  VkCompareOp compareOp;
+  bool depthWriteEnable = false;
+};
+
 struct VKRender {
   VKRender(VKContext *vkContext, VKSync *vkSyncObj, VKSwapchain *vkSwapchain,
            VKCmd *vkCmd, VKTexture *texture);
@@ -35,6 +41,7 @@ struct VKRender {
   void cmdPushConstants(VkPipelineLayout pipelineLayout,
                         VkShaderStageFlags shaderStage, uint32_t offset,
                         uint32_t size, const void *value);
+  void cmdBindDepthState(DepthInfo info);
 
 private:
   VKContext *vkContext;

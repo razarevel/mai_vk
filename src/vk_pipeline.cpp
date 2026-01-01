@@ -86,6 +86,8 @@ void VKPipeline::createPipeline() {
   std::vector dynamicStates = {
       VK_DYNAMIC_STATE_VIEWPORT,
       VK_DYNAMIC_STATE_SCISSOR,
+      VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE,
+      VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE,
   };
   VkPipelineDynamicStateCreateInfo dynamicState = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
@@ -144,8 +146,8 @@ void VKPipeline::createPipeline() {
   };
   VkPipelineDepthStencilStateCreateInfo depthStencil{
       .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-      .depthTestEnable = VK_TRUE,
-      .depthWriteEnable = VK_TRUE,
+      .depthTestEnable = VK_FALSE,
+      .depthWriteEnable = VK_FALSE,
       .depthCompareOp = VK_COMPARE_OP_LESS,
       .depthBoundsTestEnable = VK_FALSE,
       .stencilTestEnable = VK_FALSE,

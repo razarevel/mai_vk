@@ -151,6 +151,8 @@ void VKRender::beginFrame(float clearValue[4]) {
 
   vkCmdSetViewport(vkCmd->getCommandBuffers()[frameIndex], 0, 1, &viewport);
   vkCmdSetScissor(vkCmd->getCommandBuffers()[frameIndex], 0, 1, &scissor);
+  cmdBindDepthState(
+      {.compareOp = VK_COMPARE_OP_ALWAYS, .depthWriteEnable = false});
 }
 
 void VKRender::endFrame() {
@@ -263,6 +265,21 @@ void VKRender::cmdPushConstants(VkPipelineLayout pipelineLayout,
                                 uint32_t size, const void *value) {
   vkCmdPushConstants(vkCmd->getCommandBuffers()[frameIndex], pipelineLayout,
                      shaderStage, offset, size, value);
+}
+
+void VKRender::cmdBindDepthState(DepthInfo info) {
+  // vkCmdSetDepthWriteEnable(wrapper_->cmdBuf_, desc.isDepthWriteEnabled ?
+  // VK_TRUE : VK_FALSE);
+  // vkCmdSetDepthTestEnable(wrapper_->cmdBuf_, (op != VK_COMPARE_OP_ALWAYS ||
+  // desc.isDepthWriteEnabled) ? VK_TRUE : VK_FALSE);
+
+  vkCmdSetDepthWriteEnable(vkCmd->getCommandBuffers()[frameIndex],
+                           info.depthWriteEnable);
+  vkCmdSetDepthTestEnable(
+      vkCmd->getCommandBuffers()[frameIndex],
+      (info.compareOp != VK_COMPARE_OP_ALWAYS && info.depthWriteEnable)
+          ? VK_TRUE
+          : VK_FALSE);
 }
 
 VKRender::~VKRender() { delete depthTexture; }

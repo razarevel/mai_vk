@@ -9,6 +9,7 @@ namespace MAI {
 
 enum TextureFormat : uint8_t {
   MAI_TEXTURE_2D,
+  MAI_TEXTURE_CUBE,
   MAI_DEPTH_TEXTURE,
 };
 

@@ -22,7 +22,7 @@ struct VKDescriptor {
   }
 
   void updateDescriptorImageWrite(VkImageView imageView, VkSampler sampler,
-                                  uint32_t imageIndex);
+                                  uint32_t imageIndex, bool isCubemap = false);
 
 private:
   VKContext *vkContext;
