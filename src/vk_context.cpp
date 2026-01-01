@@ -259,8 +259,14 @@ void VKContext::createLogicalDevice() {
         .pQueuePriorities = &queuePriority,
     });
 
+  VkPhysicalDeviceBufferDeviceAddressFeatures bda{
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
+      .bufferDeviceAddress = VK_TRUE,
+  };
+
   VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES,
+      .pNext = &bda,
       .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
       .descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,
       .descriptorBindingPartiallyBound = VK_TRUE,
@@ -269,6 +275,7 @@ void VKContext::createLogicalDevice() {
   };
 
   VkPhysicalDeviceFeatures deviceFeatures{
+      .geometryShader = VK_TRUE,
       .fillModeNonSolid = VK_TRUE,
       .samplerAnisotropy = VK_TRUE,
   };

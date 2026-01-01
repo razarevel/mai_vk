@@ -32,8 +32,7 @@ void VKPipeline::createPipelineLayout() {
     throw std::runtime_error("failed to create pipeline layout");
 }
 
-void VKPipeline::createPipeline() {
-  std::vector<VkPipelineShaderStageCreateInfo> stages;
+void VKPipeline::setShaderModules() {
   if (info_.vert != nullptr) {
     assert(info_.vert->getShaderStage() == VK_SHADER_STAGE_VERTEX_BIT);
 
@@ -41,6 +40,15 @@ void VKPipeline::createPipeline() {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage = VK_SHADER_STAGE_VERTEX_BIT,
         .module = info_.vert->getShaderModule(),
+        .pName = "main",
+    });
+  }
+  if (info_.geom != nullptr) {
+    assert(info_.geom->getShaderStage() == VK_SHADER_STAGE_GEOMETRY_BIT);
+    stages.push_back({
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = VK_SHADER_STAGE_GEOMETRY_BIT,
+        .module = info_.geom->getShaderModule(),
         .pName = "main",
     });
   }
@@ -53,6 +61,11 @@ void VKPipeline::createPipeline() {
         .pName = "main",
     });
   }
+}
+
+void VKPipeline::createPipeline() {
+  setShaderModules();
+  assert(!stages.empty());
 
   VkPipelineVertexInputStateCreateInfo vertInputInfo = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -173,6 +186,8 @@ void VKPipeline::createPipeline() {
   if (vkCreateGraphicsPipelines(vkContext->getDevice(), nullptr, 1, &createInfo,
                                 nullptr, &pipeline) != VK_SUCCESS)
     throw std::runtime_error("failed to create graphics pipeline");
+
+  stages.clear();
 } // namespace MAI
 
 VKPipeline::~VKPipeline() {

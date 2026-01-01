@@ -25,6 +25,7 @@ struct VertextInput {
 struct PipelineInfo {
   VKShader *vert = nullptr;
   VKShader *frag = nullptr;
+  VKShader *geom = nullptr;
   VkDescriptorSetLayout descriptorSetLayout = nullptr;
   VertextInput vertInput;
   VkPushConstantRange pushConstants;
@@ -49,8 +50,10 @@ private:
   VkPipeline pipeline;
   VkPipelineLayout pipelineLayout;
   PipelineInfo info_;
+  std::vector<VkPipelineShaderStageCreateInfo> stages;
 
   void createPipelineLayout();
+  void setShaderModules();
   void createPipeline();
 };
 }; // namespace MAI

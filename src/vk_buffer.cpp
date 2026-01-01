@@ -29,9 +29,10 @@ void VKbuffer::initBuffer() {
   memcpy(data, info_.data, (size_t)info_.size);
   vkUnmapMemory(vkContext->getDevice(), stagingBufferMemory);
 
-  createBuffer(vkContext, info_.size,
-               VK_BUFFER_USAGE_TRANSFER_DST_BIT | info_.usage,
-               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer, bufferMemory);
+  createBuffer(
+      vkContext, info_.size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | info_.usage,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer, bufferMemory,
+      info_.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT ? true : false);
   copyBuffer(stagingBuffer, buffer, info_.size);
 
   vkDestroyBuffer(vkContext->getDevice(), stagingBuffer, nullptr);
@@ -55,7 +56,8 @@ void VKbuffer::createUniformBuffer() {
 void VKbuffer::createBuffer(VKContext *vkContext, VkDeviceSize size,
                             VkBufferUsageFlags usage,
                             VkMemoryPropertyFlags properties, VkBuffer &buffer,
-                            VkDeviceMemory &bufferMemory) {
+                            VkDeviceMemory &bufferMemory,
+                            bool isStorageBuffer) {
 
   VkBufferCreateInfo bufferInfo{
       .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -78,6 +80,15 @@ void VKbuffer::createBuffer(VKContext *vkContext, VkDeviceSize size,
       .memoryTypeIndex =
           findMemoryType(vkContext, memRequirements.memoryTypeBits, properties),
   };
+
+  if (isStorageBuffer) {
+    VkMemoryAllocateFlagsInfo allocFlags = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO,
+        .flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT,
+    };
+    allocInfo.pNext = &allocFlags;
+  } else
+    allocInfo.pNext = nullptr;
 
   if (vkAllocateMemory(vkContext->getDevice(), &allocInfo, nullptr,
                        &bufferMemory) != VK_SUCCESS)
@@ -115,6 +126,16 @@ uint32_t VKbuffer::findMemoryType(VKContext *vkContext, uint32_t typeFilter,
 void VKbuffer::updateUniformBuffer(uint32_t curreImage, void *data,
                                    size_t size) {
   memcpy(uniformBufferMapped[curreImage], data, size);
+}
+
+uint64_t VKbuffer::gpuAddress() {
+  VkBufferDeviceAddressInfo addrInfo{
+      .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+      .buffer = buffer,
+  };
+  VkDeviceAddress address =
+      vkGetBufferDeviceAddress(vkContext->getDevice(), &addrInfo);
+  return address;
 }
 
 VKbuffer::~VKbuffer() {
