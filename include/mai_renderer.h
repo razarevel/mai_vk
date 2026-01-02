@@ -36,7 +36,7 @@ struct MAIRenderer {
 
   void run(DrawFrameFunc drawFrame);
 
-  VKShader *createShader(const char *filename, VkShaderStageFlagBits stage);
+  VKShader *createShader(const char *filename);
   VKPipeline *createPipeline(PipelineInfo info);
   VKbuffer *createBuffer(BufferInfo info);
   VKDescriptor *createDescriptor(DescriptorSetInfo info);

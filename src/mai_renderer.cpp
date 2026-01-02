@@ -56,8 +56,31 @@ void MAIRenderer::run(DrawFrameFunc drawFrame) {
   waitForDevice();
 }
 
-VKShader *MAIRenderer::createShader(const char *filename,
-                                    VkShaderStageFlagBits stage) {
+bool endsWith(const char *s, const char *e) {
+  const size_t sLength = strlen(s);
+  const size_t eLength = strlen(e);
+  return sLength < eLength ? false : strcmp(s + sLength - eLength, e) == 0;
+}
+
+VkShaderStageFlagBits getShaderStage(const char *filename) {
+  if (endsWith(filename, "vspv"))
+    return VK_SHADER_STAGE_VERTEX_BIT;
+  if (endsWith(filename, "fspv"))
+    return VK_SHADER_STAGE_FRAGMENT_BIT;
+  if (endsWith(filename, "gspv"))
+    return VK_SHADER_STAGE_GEOMETRY_BIT;
+  if (endsWith(filename, "cspv"))
+    return VK_SHADER_STAGE_COMPUTE_BIT;
+  if (endsWith(filename, "tcspv"))
+    return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+  if (endsWith(filename, "tsspv"))
+    return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+
+  assert(false);
+}
+
+VKShader *MAIRenderer::createShader(const char *filename) {
+  VkShaderStageFlagBits stage = getShaderStage(filename);
   VKShader *shader = new VKShader(vkContext, filename, stage);
   return shader;
 }
