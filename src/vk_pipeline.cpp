@@ -140,6 +140,25 @@ void VKPipeline::createPipeline() {
       .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                         VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
   };
+  if (info_.color.blendEnable) {
+    colorBlendAttachment.blendEnable = VK_TRUE;
+
+    if (info_.color.srcColorBlned == VK_BLEND_FACTOR_SRC_ALPHA) {
+      colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+      colorBlendAttachment.dstColorBlendFactor =
+          VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    }
+
+    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+
+    if (info_.color.dstColorBlend == VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA) {
+      colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+      colorBlendAttachment.dstAlphaBlendFactor =
+          VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    }
+
+    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+  }
 
   VkPipelineColorBlendStateCreateInfo colorBlending{
       .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,

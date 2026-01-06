@@ -7,7 +7,8 @@ namespace MAI {
 struct BufferInfo {
   VkDeviceSize size;
   const void *data;
-  VkBufferUsageFlags usage;
+  VkBufferUsageFlags usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 };
 
 struct VKbuffer {

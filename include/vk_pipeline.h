@@ -22,16 +22,23 @@ struct VertextInput {
   InputBinding inputBinding;
 };
 
+struct ColorInfo {
+  bool blendEnable = false;
+  VkBlendFactor srcColorBlned;
+  VkBlendFactor dstColorBlend;
+};
+
 struct PipelineInfo {
   VKShader *vert = nullptr;
   VKShader *frag = nullptr;
   VKShader *geom = nullptr;
   VkDescriptorSetLayout descriptorSetLayout = nullptr;
-  VertextInput vertInput;
-  VkPushConstantRange pushConstants;
   VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   VkPolygonMode polygon = VK_POLYGON_MODE_FILL;
   VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
+  VertextInput vertInput;
+  ColorInfo color;
+  VkPushConstantRange pushConstants;
 };
 
 struct VKPipeline {
