@@ -143,7 +143,7 @@ void VKPipeline::createPipeline() {
   if (info_.color.blendEnable) {
     colorBlendAttachment.blendEnable = VK_TRUE;
 
-    if (info_.color.srcColorBlned == VK_BLEND_FACTOR_SRC_ALPHA) {
+    if (info_.color.srcColorBlend == VK_BLEND_FACTOR_SRC_ALPHA) {
       colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
       colorBlendAttachment.dstColorBlendFactor =
           VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;

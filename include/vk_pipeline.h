@@ -24,7 +24,7 @@ struct VertextInput {
 
 struct ColorInfo {
   bool blendEnable = false;
-  VkBlendFactor srcColorBlned;
+  VkBlendFactor srcColorBlend;
   VkBlendFactor dstColorBlend;
 };
 
