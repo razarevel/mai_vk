@@ -15,18 +15,12 @@ mai is designed around a few core principles:
 
 ## 🖼️ Demos
 
-Here are some demos showcasing mai in action.  
+Here are some demos showcasing mai in action.
 
-### Triangle / Basic Rendering
-![Triangle Demo](screenshots/hello_triangle.png)
-
-### Bindless Textures
-![Bindless Texture Demo](screenshots/textures.png)
-
-### Bindless Textures
+### Cubemap Textures
 ![Cubemap Texture Demo](screenshots/cubemap.png)
 
 ### Flipbook Animation
-![Cubemap Texture Demo](screenshots/flipbook_animation.png)
+![Flipbook Texture Demo](screenshots/flipbook_animation.png)
 
-You can find the source code for these demos in the [Asobi_Yo repository](https://github.com/razarevel/asobi_yo).
+You can find the source code for these demos in the [Asobi_Yo](https://github.com/razarevel/asobi_yo).
